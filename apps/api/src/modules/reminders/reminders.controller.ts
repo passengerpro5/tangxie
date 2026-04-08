@@ -36,7 +36,9 @@ async function readJsonBody(req: IncomingMessage) {
   return JSON.parse(text);
 }
 
-function serializeReminder(reminder: ReturnType<RemindersService["listReminders"]>[number]) {
+function serializeReminder(
+  reminder: Awaited<ReturnType<RemindersService["listReminders"]>>[number],
+) {
   return {
     ...reminder,
     remindAt: reminder.remindAt.toISOString(),
@@ -44,7 +46,9 @@ function serializeReminder(reminder: ReturnType<RemindersService["listReminders"
   };
 }
 
-function serializeSummary(summary: ReturnType<RemindersService["getDailySummary"]>) {
+function serializeSummary(
+  summary: Awaited<ReturnType<RemindersService["getDailySummary"]>>,
+) {
   return {
     ...summary,
     items: summary.items.map((item) => serializeReminder(item)),
@@ -95,7 +99,8 @@ export class RemindersController {
     try {
       if (req.method === "POST" && url.pathname === "/reminders/generate") {
         const body = await readJsonBody(req);
-        const result = this.service.generateFromConfirmedBlocks({
+        const result = await this.service.generateFromConfirmedBlocks({
+          // Route-level override still allowed for non-app tests.
           confirmedBlocks:
             body && typeof body === "object" && "confirmedBlocks" in body
               ? parseConfirmedBlocks(body)
@@ -111,14 +116,15 @@ export class RemindersController {
 
       if (req.method === "GET" && url.pathname === "/reminders/daily-summary") {
         const date = url.searchParams.get("date") ?? new Date().toISOString().slice(0, 10);
-        const summary = this.service.getDailySummary(date);
+        const summary = await this.service.getDailySummary(date);
         sendJson(res, 200, serializeSummary(summary));
         return;
       }
 
       if (req.method === "GET" && url.pathname === "/reminders") {
+        const reminders = await this.service.listReminders();
         sendJson(res, 200, {
-          items: this.service.listReminders().map((reminder) => serializeReminder(reminder)),
+          items: reminders.map((reminder) => serializeReminder(reminder)),
         });
         return;
       }

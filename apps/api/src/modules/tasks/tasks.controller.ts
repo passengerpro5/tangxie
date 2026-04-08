@@ -1,6 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { TasksService, type TaskInput, type TaskInputSourceRecord, type TaskRecord, type ClarificationSessionRecord } from "./tasks.service.ts";
+import {
+  TasksService,
+  type ClarificationSessionRecord,
+  type TaskInput,
+  type TaskInputSourceRecord,
+  type TaskRecord,
+} from "./tasks.service.ts";
 
 export type TasksHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void> | void;
 
@@ -121,7 +127,7 @@ export class TasksController {
     try {
       if (req.method === "POST" && url.pathname === "/tasks/intake") {
         const body = ((await readJsonBody(req)) ?? {}) as TaskIntakeBody;
-        const result = this.service.intakeTask(buildIntakeInput(body));
+        const result = await this.service.intakeTask(buildIntakeInput(body));
 
         sendJson(res, 201, {
           task: serializeTask(result.task),

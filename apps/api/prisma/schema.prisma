@@ -109,6 +109,7 @@ model ClarificationSession {
   aiExtractedFields     Json?
   userConfirmedFields   Json?
   status               ClarificationSessionStatus @default(active)
+  nextQuestion         String?
   providerId           String?
   modelName            String?
   promptVersion        String?

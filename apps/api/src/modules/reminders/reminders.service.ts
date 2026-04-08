@@ -1,27 +1,16 @@
-export type ReminderType = "start" | "deadline" | "daily_summary";
-export type ReminderStatus = "pending" | "sent" | "read" | "failed";
+import {
+  createInMemoryRemindersRepository,
+  type CreateReminderInput,
+  type ReminderRecord,
+  type ReminderStatus,
+  type ReminderType,
+  type RemindersRepository,
+} from "../../persistence/reminders-repository.ts";
+import type { ConfirmedBlockRecord } from "../../persistence/scheduling-repository.ts";
 
-export interface ConfirmedScheduleBlockRecord {
-  id: string;
-  taskId: string;
-  title: string;
-  startAt: Date;
-  endAt: Date;
-  durationMinutes: number;
-  status: "confirmed";
-}
+export type { ReminderType, ReminderStatus, ReminderRecord, ConfirmedBlockRecord };
 
-export interface ReminderRecord {
-  id: string;
-  blockId: string;
-  taskId: string;
-  title: string;
-  reminderType: ReminderType;
-  remindAt: Date;
-  status: ReminderStatus;
-  message: string;
-  createdAt: Date;
-}
+export type ConfirmedScheduleBlockRecord = ConfirmedBlockRecord;
 
 export interface ReminderSummary {
   date: string;
@@ -88,12 +77,18 @@ function buildReminderMessage(
 
 export class RemindersService {
   private readonly clock: () => Date;
+  private readonly repository: RemindersRepository;
+  private readonly confirmedBlocksProvider?: () => Promise<ConfirmedScheduleBlockRecord[]>;
   private readonly confirmedBlocks: ConfirmedScheduleBlockRecord[] = [];
-  private readonly reminders: ReminderRecord[] = [];
-  private reminderSeq = 0;
 
-  constructor(options: { now?: () => Date } = {}) {
+  constructor(options: {
+    now?: () => Date;
+    repository?: RemindersRepository;
+    listConfirmedBlocks?: () => Promise<ConfirmedScheduleBlockRecord[]>;
+  } = {}) {
     this.clock = options.now ?? (() => new Date());
+    this.repository = options.repository ?? createInMemoryRemindersRepository();
+    this.confirmedBlocksProvider = options.listConfirmedBlocks;
   }
 
   seedConfirmedBlocks(blocks: ConfirmedScheduleBlockRecord[]) {
@@ -108,16 +103,12 @@ export class RemindersService {
     }));
   }
 
-  listReminders() {
-    return this.reminders.map((reminder) => ({
-      ...reminder,
-      remindAt: cloneDate(reminder.remindAt),
-      createdAt: cloneDate(reminder.createdAt),
-    }));
+  async listReminders() {
+    return this.repository.listReminders();
   }
 
-  generateFromConfirmedBlocks(input: GenerateRemindersInput): GenerateRemindersResult {
-    const sourceBlocks = input.confirmedBlocks ?? this.listConfirmedBlocks();
+  async generateFromConfirmedBlocks(input: GenerateRemindersInput): Promise<GenerateRemindersResult> {
+    const sourceBlocks = input.confirmedBlocks ?? (await this.loadConfirmedBlocks());
     const blocks = normalizeConfirmedBlocks(sourceBlocks);
     if (blocks.length !== sourceBlocks.length) {
       throw new Error("Only confirmed schedule blocks can generate reminders");
@@ -128,7 +119,7 @@ export class RemindersService {
     const startLeadMinutes = input.startLeadMinutes ?? 30;
     const deadlineLeadMinutes = input.deadlineLeadMinutes ?? 30;
     const now = this.clock();
-    const generated: ReminderRecord[] = [];
+    const generated: CreateReminderInput[] = [];
 
     for (const block of blocks) {
       generated.push(
@@ -139,18 +130,24 @@ export class RemindersService {
       );
     }
 
-    this.reminders.push(...generated);
+    const createdReminders = await this.repository.replaceRemindersForBlocks(
+      blocks.map((block) => block.id),
+      generated,
+    );
 
-    const summary = this.buildSummary(now);
+    const summary = this.buildSummary(
+      createdReminders.filter((reminder) => dateKey(reminder.remindAt) === dateKey(now)),
+      dateKey(now),
+    );
     return {
-      reminders: generated.map((reminder) => ({ ...reminder })),
+      reminders: createdReminders.map((reminder) => ({ ...reminder })),
       summary,
     };
   }
 
-  getDailySummary(date: Date | string) {
+  async getDailySummary(date: Date | string) {
     const day = typeof date === "string" ? date.slice(0, 10) : dateKey(date);
-    return this.buildSummary(this.clock(), day);
+    return this.buildSummary(await this.repository.listRemindersByDate(day), day);
   }
 
   private createReminder(
@@ -158,9 +155,8 @@ export class RemindersService {
     reminderType: ReminderType,
     remindAt: Date,
     now: Date,
-  ) {
-    const reminder: ReminderRecord = {
-      id: createId("reminder", ++this.reminderSeq),
+  ): CreateReminderInput {
+    return {
       blockId: block.id,
       taskId: block.taskId,
       title: block.title,
@@ -170,14 +166,18 @@ export class RemindersService {
       message: buildReminderMessage(reminderType, block, remindAt),
       createdAt: cloneDate(now),
     };
-
-    return reminder;
   }
 
-  private buildSummary(now: Date, dateOverride?: string): ReminderSummary {
-    const targetDate = dateOverride ?? dateKey(now);
-    const items = this.reminders
-      .filter((reminder) => dateKey(reminder.remindAt) === targetDate)
+  private async loadConfirmedBlocks() {
+    if (this.confirmedBlocksProvider) {
+      return this.confirmedBlocksProvider();
+    }
+
+    return this.listConfirmedBlocks();
+  }
+
+  private buildSummary(reminders: ReminderRecord[], date: string): ReminderSummary {
+    const items = reminders
       .map((reminder) => ({
         ...reminder,
         remindAt: cloneDate(reminder.remindAt),
@@ -185,7 +185,7 @@ export class RemindersService {
       }));
 
     return {
-      date: targetDate,
+      date,
       totalCount: items.length,
       startCount: items.filter((item) => item.reminderType === "start").length,
       deadlineCount: items.filter((item) => item.reminderType === "deadline").length,

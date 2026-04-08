@@ -1,62 +1,20 @@
-export type TaskStatus =
-  | "draft"
-  | "needs_info"
-  | "schedulable"
-  | "scheduled"
-  | "done"
-  | "overdue";
+import {
+  createInMemoryTasksRepository,
+  type ClarificationMessageRecord,
+  type ClarificationSessionRecord,
+  type TaskInputSourceRecord,
+  type TaskRecord,
+  type TasksRepository,
+} from "../../persistence/tasks-repository.ts";
+
+export type { ClarificationMessageRecord, ClarificationSessionRecord, TaskInputSourceRecord, TaskRecord };
+export type TaskStatus = TaskRecord["status"];
 
 export interface TaskInput {
   rawText: string;
   sourceType?: "text" | "image" | "doc";
   fileName?: string;
   fileUrl?: string;
-}
-
-export interface TaskInputSourceRecord {
-  id: string;
-  taskId: string;
-  sourceType: "text" | "image" | "doc";
-  rawText: string;
-  fileName: string | null;
-  fileUrl: string | null;
-  createdAt: Date;
-}
-
-export interface TaskRecord {
-  id: string;
-  title: string;
-  description: string;
-  sourceType: "text" | "image" | "doc";
-  status: TaskStatus;
-  deadlineAt: Date | null;
-  estimatedDurationMinutes: number | null;
-  priorityScore: number | null;
-  priorityRank: number | null;
-  importanceReason: string | null;
-  createdByAI: boolean;
-  userConfirmed: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface ClarificationMessageRecord {
-  role: "system" | "assistant" | "user";
-  content: string;
-  createdAt: Date;
-}
-
-export interface ClarificationSessionRecord {
-  id: string;
-  taskId: string;
-  currentMissingFields: string[];
-  messages: ClarificationMessageRecord[];
-  aiExtractedFields: Record<string, unknown>;
-  userConfirmedFields: Record<string, unknown>;
-  status: "active" | "resolved" | "closed";
-  nextQuestion: string | null;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface IntakeTaskResult {
@@ -77,16 +35,6 @@ export interface ClarificationReplyResult {
   clarificationSession: ClarificationSessionRecord;
   missingFields: string[];
   nextQuestion: string | null;
-}
-
-interface TaskStoreState {
-  tasks: TaskRecord[];
-  sources: TaskInputSourceRecord[];
-  sessions: ClarificationSessionRecord[];
-}
-
-function createId(prefix: string, seed: number) {
-  return `${prefix}_${seed.toString(36)}`;
 }
 
 function cloneDate(date: Date) {
@@ -242,14 +190,14 @@ function buildNextQuestion(missingFields: string[]) {
   return null;
 }
 
-function buildClarificationMessage(question: string | null, now: Date) {
+function buildClarificationMessage(question: string | null, now: Date): ClarificationMessageRecord[] {
   if (!question) {
     return [];
   }
 
   return [
     {
-      role: "assistant" as const,
+      role: "assistant",
       content: question,
       createdAt: cloneDate(now),
     },
@@ -267,29 +215,31 @@ function toReason(deadlineAt: Date | null, estimatedDurationMinutes: number | nu
   return reasonParts.length > 0 ? reasonParts.join(", ") : null;
 }
 
+export interface TasksServiceOptions {
+  now?: () => Date;
+  repository?: TasksRepository;
+}
+
 export class TasksService {
   private readonly clock: () => Date;
-  private taskSeq = 0;
-  private sourceSeq = 0;
-  private sessionSeq = 0;
-  private readonly state: TaskStoreState = {
-    tasks: [],
-    sources: [],
-    sessions: [],
-  };
+  private readonly repository: TasksRepository;
 
-  constructor(options: { now?: () => Date } = {}) {
+  constructor(options: TasksServiceOptions = {}) {
     this.clock = options.now ?? (() => new Date());
+    this.repository =
+      options.repository ??
+      createInMemoryTasksRepository({
+        now: this.clock,
+      });
   }
 
-  intakeTask(input: TaskInput): IntakeTaskResult {
+  async intakeTask(input: TaskInput): Promise<IntakeTaskResult> {
     const now = this.clock();
     const rawText = stripText(input.rawText);
     if (!rawText) {
       throw new Error("rawText is required");
     }
 
-    const taskId = createId("task", ++this.taskSeq);
     const title = truncateTitle(rawText);
     const sourceType = input.sourceType ?? "text";
     const deadlineAt = parseDeadline(rawText, now);
@@ -297,132 +247,132 @@ export class TasksService {
     const missingFields = this.computeMissingFields(deadlineAt, estimatedDurationMinutes);
     const nextQuestion = buildNextQuestion(missingFields);
 
-    const task: TaskRecord = {
-      id: taskId,
-      title,
-      description: rawText,
-      sourceType,
-      status: missingFields.length === 0 ? "schedulable" : "needs_info",
-      deadlineAt,
-      estimatedDurationMinutes,
-      priorityScore: missingFields.length === 0 ? 80 : 40,
-      priorityRank: null,
-      importanceReason: toReason(deadlineAt, estimatedDurationMinutes),
-      createdByAI: true,
-      userConfirmed: false,
-      createdAt: cloneDate(now),
-      updatedAt: cloneDate(now),
-    };
-
-    const source: TaskInputSourceRecord = {
-      id: createId("source", ++this.sourceSeq),
-      taskId,
-      sourceType,
-      rawText,
-      fileName: input.fileName ?? null,
-      fileUrl: input.fileUrl ?? null,
-      createdAt: cloneDate(now),
-    };
-
-    const clarificationSession: ClarificationSessionRecord = {
-      id: createId("session", ++this.sessionSeq),
-      taskId,
-      currentMissingFields: [...missingFields],
-      messages: [
-        {
-          role: "system",
-          content: `Extracted task "${title}" from ${sourceType} input.`,
-          createdAt: cloneDate(now),
-        },
-        ...buildClarificationMessage(nextQuestion, now),
-      ],
-      aiExtractedFields: {
+    const created = await this.repository.createTaskWithSourceAndSession({
+      task: {
         title,
-        deadlineAt: deadlineAt ? deadlineAt.toISOString() : null,
+        description: rawText,
+        sourceType,
+        status: missingFields.length === 0 ? "schedulable" : "needs_info",
+        deadlineAt,
         estimatedDurationMinutes,
+        priorityScore: missingFields.length === 0 ? 80 : 40,
+        priorityRank: null,
+        importanceReason: toReason(deadlineAt, estimatedDurationMinutes),
+        createdByAI: true,
+        userConfirmed: false,
       },
-      userConfirmedFields: {},
-      status: missingFields.length === 0 ? "resolved" : "active",
-      nextQuestion,
-      createdAt: cloneDate(now),
-      updatedAt: cloneDate(now),
-    };
-
-    this.state.tasks.push(task);
-    this.state.sources.push(source);
-    this.state.sessions.push(clarificationSession);
+      source: {
+        sourceType,
+        rawText,
+        fileName: input.fileName ?? null,
+        fileUrl: input.fileUrl ?? null,
+      },
+      clarificationSession: {
+        currentMissingFields: [...missingFields],
+        messages: [
+          {
+            role: "system",
+            content: `Extracted task "${title}" from ${sourceType} input.`,
+            createdAt: cloneDate(now),
+          },
+          ...buildClarificationMessage(nextQuestion, now),
+        ],
+        aiExtractedFields: {
+          title,
+          deadlineAt: deadlineAt ? deadlineAt.toISOString() : null,
+          estimatedDurationMinutes,
+        },
+        userConfirmedFields: {},
+        status: missingFields.length === 0 ? "resolved" : "active",
+        nextQuestion,
+      },
+    });
 
     return {
-      task,
-      source,
-      clarificationSession,
+      ...created,
       missingFields,
       nextQuestion,
     };
   }
 
-  replyToClarification(input: ClarificationReplyInput): ClarificationReplyResult {
-    const session = this.requireSession(input.sessionId);
-    const task = this.requireTask(session.taskId);
+  async replyToClarification(input: ClarificationReplyInput): Promise<ClarificationReplyResult> {
+    const session = await this.requireSession(input.sessionId);
+    const task = await this.requireTask(session.taskId);
     const now = this.clock();
     const userAnswer = stripText(input.answerText);
 
-    session.messages.push({
-      role: "user",
-      content: userAnswer,
-      createdAt: cloneDate(now),
-    });
+    const nextMessages = [
+      ...session.messages,
+      {
+        role: "user" as const,
+        content: userAnswer,
+        createdAt: cloneDate(now),
+      },
+    ];
 
     const resolvedValues = this.applyClarificationAnswer(task, session.currentMissingFields, userAnswer, now);
 
-    if (resolvedValues.deadlineAt) {
-      task.deadlineAt = resolvedValues.deadlineAt;
-    }
-    if (resolvedValues.estimatedDurationMinutes !== null) {
-      task.estimatedDurationMinutes = resolvedValues.estimatedDurationMinutes;
-    }
+    const nextTask: TaskRecord = {
+      ...task,
+      deadlineAt: resolvedValues.deadlineAt ?? task.deadlineAt,
+      estimatedDurationMinutes:
+        resolvedValues.estimatedDurationMinutes ?? task.estimatedDurationMinutes,
+      updatedAt: cloneDate(now),
+    };
 
-    task.status = this.computeMissingFields(task.deadlineAt, task.estimatedDurationMinutes).length === 0 ? "schedulable" : "needs_info";
-    task.importanceReason = toReason(task.deadlineAt, task.estimatedDurationMinutes);
-    task.updatedAt = cloneDate(now);
+    nextTask.status =
+      this.computeMissingFields(nextTask.deadlineAt, nextTask.estimatedDurationMinutes).length === 0
+        ? "schedulable"
+        : "needs_info";
+    nextTask.importanceReason = toReason(
+      nextTask.deadlineAt,
+      nextTask.estimatedDurationMinutes,
+    );
 
-    session.currentMissingFields = this.computeMissingFields(task.deadlineAt, task.estimatedDurationMinutes);
-    session.nextQuestion = buildNextQuestion(session.currentMissingFields);
-    session.status = session.currentMissingFields.length === 0 ? "resolved" : "active";
-    session.updatedAt = cloneDate(now);
+    const nextMissingFields = this.computeMissingFields(
+      nextTask.deadlineAt,
+      nextTask.estimatedDurationMinutes,
+    );
+    const nextQuestion = buildNextQuestion(nextMissingFields);
 
-    if (session.nextQuestion) {
-      session.messages.push({
-        role: "assistant",
-        content: session.nextQuestion,
-        createdAt: cloneDate(now),
-      });
-    } else {
-      session.messages.push({
-        role: "assistant",
-        content: "信息已补全，可以开始安排任务。",
-        createdAt: cloneDate(now),
-      });
-    }
+    const nextSession: ClarificationSessionRecord = {
+      ...session,
+      currentMissingFields: nextMissingFields,
+      nextQuestion,
+      status: nextMissingFields.length === 0 ? "resolved" : "active",
+      updatedAt: cloneDate(now),
+      messages: [
+        ...nextMessages,
+        {
+          role: "assistant",
+          content: nextQuestion ?? "信息已补全，可以开始安排任务。",
+          createdAt: cloneDate(now),
+        },
+      ],
+    };
+
+    const updated = await this.repository.updateTaskAndSession({
+      task: nextTask,
+      clarificationSession: nextSession,
+    });
 
     return {
-      task,
-      clarificationSession: session,
-      missingFields: [...session.currentMissingFields],
-      nextQuestion: session.nextQuestion,
+      ...updated,
+      missingFields: [...nextMissingFields],
+      nextQuestion,
     };
   }
 
-  listTasks() {
-    return [...this.state.tasks];
+  async listTasks() {
+    return this.repository.listTasks();
   }
 
-  listSessions() {
-    return [...this.state.sessions];
+  async listSessions() {
+    return this.repository.listSessions();
   }
 
-  getSession(sessionId: string) {
-    return this.state.sessions.find((session) => session.id === sessionId);
+  async getSession(sessionId: string) {
+    return this.repository.findSessionById(sessionId);
   }
 
   private computeMissingFields(deadlineAt: Date | null, estimatedDurationMinutes: number | null) {
@@ -451,22 +401,23 @@ export class TasksService {
     }
 
     if (missingFields.includes("estimatedDurationMinutes")) {
-      resolved.estimatedDurationMinutes = parseDurationMinutes(answerText) ?? task.estimatedDurationMinutes;
+      resolved.estimatedDurationMinutes =
+        parseDurationMinutes(answerText) ?? task.estimatedDurationMinutes;
     }
 
     return resolved;
   }
 
-  private requireTask(taskId: string) {
-    const task = this.state.tasks.find((item) => item.id === taskId);
+  private async requireTask(taskId: string) {
+    const task = await this.repository.findTaskById(taskId);
     if (!task) {
       throw new Error("Task not found");
     }
     return task;
   }
 
-  private requireSession(sessionId: string) {
-    const session = this.getSession(sessionId);
+  private async requireSession(sessionId: string) {
+    const session = await this.getSession(sessionId);
     if (!session) {
       throw new Error("Clarification session not found");
     }

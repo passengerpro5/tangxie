@@ -36,7 +36,9 @@ async function readJsonBody(req: IncomingMessage) {
   return JSON.parse(text);
 }
 
-function serializeSession(session: ReturnType<ClarificationService["getSession"]>) {
+function serializeSession(
+  session: Awaited<ReturnType<ClarificationService["getSession"]>>,
+) {
   return {
     ...session,
     messages: session.messages.map((message) => ({
@@ -48,7 +50,9 @@ function serializeSession(session: ReturnType<ClarificationService["getSession"]
   };
 }
 
-function serializeTask(task: ReturnType<ClarificationService["reply"]>["task"]) {
+function serializeTask(
+  task: Awaited<ReturnType<ClarificationService["reply"]>>["task"],
+) {
   return {
     ...task,
     deadlineAt: task.deadlineAt ? task.deadlineAt.toISOString() : null,
@@ -70,7 +74,7 @@ export class ClarificationController {
     try {
       if (req.method === "POST" && url.pathname === "/clarification/reply") {
         const body = ((await readJsonBody(req)) ?? {}) as Partial<ClarificationReplyInput>;
-        const result = this.service.reply({
+        const result = await this.service.reply({
           sessionId: body.sessionId ?? "",
           answerText: body.answerText ?? "",
         });
@@ -91,7 +95,7 @@ export class ClarificationController {
           return;
         }
 
-        const session = this.service.getSession(sessionId);
+        const session = await this.service.getSession(sessionId);
         sendJson(res, 200, { clarificationSession: serializeSession(session) });
         return;
       }

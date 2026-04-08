@@ -58,7 +58,7 @@ export class SchedulingController {
     try {
       if (req.method === "POST" && url.pathname === "/scheduling/propose") {
         const body = (await readJsonBody(req)) as { taskIds?: string[] } | undefined;
-        const result = this.service.propose({
+        const result = await this.service.propose({
           taskIds: Array.isArray(body?.taskIds) ? body?.taskIds : [],
         });
 
@@ -76,7 +76,7 @@ export class SchedulingController {
 
       if (req.method === "POST" && url.pathname === "/scheduling/confirm") {
         const body = (await readJsonBody(req)) as { taskIds?: string[] } | undefined;
-        const result = this.service.confirm(Array.isArray(body?.taskIds) ? body?.taskIds : []);
+        const result = await this.service.confirm(Array.isArray(body?.taskIds) ? body?.taskIds : []);
 
         if (!result.ok) {
           sendJson(res, 422, result);

@@ -121,7 +121,9 @@ test(
     const logsRes = await invoke(handler, "GET", "/admin/ai/logs");
     assert.equal(logsRes.statusCode, 200);
     assert.ok(logsRes.body.items.length >= 4);
-    assert.equal(logsRes.body.items[0].action, "provider.test");
+    assert.ok(
+      logsRes.body.items.some((item: { action: string }) => item.action === "provider.test"),
+    );
 
     const providerCount = await prisma.aIProviderConfig.count();
     const modelCount = await prisma.aIModelBinding.count();

@@ -12,12 +12,12 @@ export class ClarificationService {
     this.tasksService = tasksService;
   }
 
-  reply(input: ClarificationReplyInput) {
+  async reply(input: ClarificationReplyInput) {
     return this.tasksService.replyToClarification(input);
   }
 
-  getSession(sessionId: string) {
-    const session = this.tasksService.getSession(sessionId);
+  async getSession(sessionId: string) {
+    const session = await this.tasksService.getSession(sessionId);
     if (!session) {
       throw new Error("Clarification session not found");
     }

@@ -108,10 +108,10 @@ test("daily summary returns reminders for the requested date", async () => {
   assert.equal(summaryRes.body.items[0].blockId, "block-2");
 });
 
-test("rejects non-confirmed blocks", () => {
+test("rejects non-confirmed blocks", async () => {
   const service = new RemindersService();
 
-  assert.throws(
+  await assert.rejects(
     () =>
       service.generateFromConfirmedBlocks({
         confirmedBlocks: [
