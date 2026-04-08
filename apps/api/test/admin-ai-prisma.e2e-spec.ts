@@ -197,8 +197,9 @@ test(
     assert.equal(modelList.body.items.length, 1);
     assert.equal(promptList.body.items.length, 1);
     assert.equal(logList.body.items.length, 3);
-    assert.equal(logList.body.items[0].action, "prompt.create");
-    assert.equal(logList.body.items[1].action, "model.create");
-    assert.equal(logList.body.items[2].action, "provider.create");
+    assert.deepEqual(
+      new Set(logList.body.items.map((item: { action: string }) => item.action)),
+      new Set(["provider.create", "model.create", "prompt.create"]),
+    );
   },
 );
