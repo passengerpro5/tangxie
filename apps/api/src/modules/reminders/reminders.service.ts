@@ -32,7 +32,7 @@ export interface ReminderSummary {
 }
 
 export interface GenerateRemindersInput {
-  confirmedBlocks: ConfirmedScheduleBlockRecord[];
+  confirmedBlocks?: ConfirmedScheduleBlockRecord[];
   startLeadMinutes?: number;
   deadlineLeadMinutes?: number;
 }
@@ -117,8 +117,9 @@ export class RemindersService {
   }
 
   generateFromConfirmedBlocks(input: GenerateRemindersInput): GenerateRemindersResult {
-    const blocks = normalizeConfirmedBlocks(input.confirmedBlocks);
-    if (blocks.length !== input.confirmedBlocks.length) {
+    const sourceBlocks = input.confirmedBlocks ?? this.listConfirmedBlocks();
+    const blocks = normalizeConfirmedBlocks(sourceBlocks);
+    if (blocks.length !== sourceBlocks.length) {
       throw new Error("Only confirmed schedule blocks can generate reminders");
     }
 

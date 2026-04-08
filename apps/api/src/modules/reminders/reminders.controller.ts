@@ -96,7 +96,10 @@ export class RemindersController {
       if (req.method === "POST" && url.pathname === "/reminders/generate") {
         const body = await readJsonBody(req);
         const result = this.service.generateFromConfirmedBlocks({
-          confirmedBlocks: parseConfirmedBlocks(body),
+          confirmedBlocks:
+            body && typeof body === "object" && "confirmedBlocks" in body
+              ? parseConfirmedBlocks(body)
+              : undefined,
         });
 
         sendJson(res, 201, {

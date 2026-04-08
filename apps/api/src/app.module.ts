@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createClarificationHandler } from "./modules/clarification/clarification.controller.ts";
 import { ClarificationService } from "./modules/clarification/clarification.service.ts";
+import { createRemindersHandler } from "./modules/reminders/reminders.controller.ts";
+import { RemindersService } from "./modules/reminders/reminders.service.ts";
 import { createSchedulingHandler } from "./modules/scheduling/scheduling.controller.ts";
 import { SchedulingService } from "./modules/scheduling/scheduling.service.ts";
 import { createTasksHandler } from "./modules/tasks/tasks.controller.ts";
@@ -20,9 +22,11 @@ function sendJson(res: ServerResponse, statusCode: number, payload: unknown) {
 export function createAppHandler(): ApiHandler {
   const tasksService = new TasksService();
   const clarificationService = new ClarificationService(tasksService);
+  const remindersService = new RemindersService();
   const schedulingService = new SchedulingService();
   const tasksHandler = createTasksHandler(tasksService);
   const clarificationHandler = createClarificationHandler(clarificationService);
+  const remindersHandler = createRemindersHandler(remindersService);
   const schedulingHandler = createSchedulingHandler(schedulingService);
 
   function syncSchedulingTasks() {
@@ -36,6 +40,20 @@ export function createAppHandler(): ApiHandler {
         priorityRank: task.priorityRank,
         userConfirmed: task.userConfirmed,
         createdAt: task.createdAt,
+      })),
+    );
+  }
+
+  function syncReminderBlocks() {
+    remindersService.seedConfirmedBlocks(
+      schedulingService.listConfirmedBlocks().map((block) => ({
+        id: block.id,
+        taskId: block.taskId,
+        title: block.title,
+        startAt: block.startAt,
+        endAt: block.endAt,
+        durationMinutes: block.durationMinutes,
+        status: "confirmed" as const,
       })),
     );
   }
@@ -67,6 +85,16 @@ export function createAppHandler(): ApiHandler {
     ) {
       syncSchedulingTasks();
       void schedulingHandler(req, res);
+      return;
+    }
+
+    if (
+      url.pathname === "/reminders/generate" ||
+      url.pathname === "/reminders/daily-summary" ||
+      url.pathname === "/reminders"
+    ) {
+      syncReminderBlocks();
+      void remindersHandler(req, res);
       return;
     }
 
