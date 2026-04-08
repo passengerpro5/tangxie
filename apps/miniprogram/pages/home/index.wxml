@@ -1,0 +1,58 @@
+<view class="page">
+  <view class="hero">
+    <text class="brand">Time Sheet</text>
+    <text class="title">糖蟹</text>
+    <text class="subtitle">自动排期和按时提醒</text>
+  </view>
+
+  <view class="tabs">
+    <view class="tab tab-active">
+      <text>日程</text>
+    </view>
+    <view class="tab">
+      <text>任务看板</text>
+    </view>
+  </view>
+
+  <view class="panel schedule-panel">
+    <view class="panel-header">
+      <text class="panel-title">日程</text>
+      <text class="panel-caption">按时间轴查看任务块</text>
+    </view>
+    <view class="timeline">
+      <view class="timeline-item timeline-item-primary">
+        <text class="timeline-title">论文初稿</text>
+        <text class="timeline-meta">02:00 - 06:30</text>
+      </view>
+      <view class="timeline-item">
+        <text class="timeline-title">整理资料</text>
+        <text class="timeline-meta">待安排</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel kanban-panel">
+    <view class="panel-header">
+      <text class="panel-title">任务看板</text>
+      <text class="panel-caption">待补信息、已安排、已完成</text>
+    </view>
+    <view class="kanban-grid">
+      <view class="kanban-card">
+        <text class="kanban-label">待补信息</text>
+        <text class="kanban-count">1</text>
+      </view>
+      <view class="kanban-card">
+        <text class="kanban-label">已安排</text>
+        <text class="kanban-count">1</text>
+      </view>
+      <view class="kanban-card">
+        <text class="kanban-label">已完成</text>
+        <text class="kanban-count">1</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="primary-action">
+    <text>安排任务</text>
+  </view>
+</view>

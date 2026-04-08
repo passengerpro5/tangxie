@@ -1,0 +1,12 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/task-detail/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "糖蟹",
+    "navigationBarBackgroundColor": "#fff7ed",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#fff7ed"
+  }
+}
