@@ -6,6 +6,7 @@
     "start": "node --experimental-strip-types src/main.ts",
     "test": "node --experimental-strip-types --test test/app.e2e-spec.ts",
     "test:admin-ai": "node --experimental-strip-types --test test/admin-ai.e2e-spec.ts",
+    "test:task-intake": "node --experimental-strip-types --test test/task-intake.e2e-spec.ts",
     "test:schema": "node --experimental-strip-types --test test/prisma-schema.spec.ts",
     "test:gateway": "node --experimental-strip-types --test test/ai-gateway.service.spec.ts"
   }
