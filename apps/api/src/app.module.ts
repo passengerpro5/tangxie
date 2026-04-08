@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createClarificationHandler } from "./modules/clarification/clarification.controller.ts";
 import { ClarificationService } from "./modules/clarification/clarification.service.ts";
+import { createSchedulingHandler } from "./modules/scheduling/scheduling.controller.ts";
+import { SchedulingService } from "./modules/scheduling/scheduling.service.ts";
 import { createTasksHandler } from "./modules/tasks/tasks.controller.ts";
 import { TasksService } from "./modules/tasks/tasks.service.ts";
 
@@ -18,8 +20,25 @@ function sendJson(res: ServerResponse, statusCode: number, payload: unknown) {
 export function createAppHandler(): ApiHandler {
   const tasksService = new TasksService();
   const clarificationService = new ClarificationService(tasksService);
+  const schedulingService = new SchedulingService();
   const tasksHandler = createTasksHandler(tasksService);
   const clarificationHandler = createClarificationHandler(clarificationService);
+  const schedulingHandler = createSchedulingHandler(schedulingService);
+
+  function syncSchedulingTasks() {
+    schedulingService.seedTasks(
+      tasksService.listTasks().map((task) => ({
+        id: task.id,
+        title: task.title,
+        deadlineAt: task.deadlineAt,
+        estimatedDurationMinutes: task.estimatedDurationMinutes,
+        priorityScore: task.priorityScore,
+        priorityRank: task.priorityRank,
+        userConfirmed: task.userConfirmed,
+        createdAt: task.createdAt,
+      })),
+    );
+  }
 
   return (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -39,6 +58,15 @@ export function createAppHandler(): ApiHandler {
       url.pathname.startsWith("/clarification/sessions/")
     ) {
       void clarificationHandler(req, res);
+      return;
+    }
+
+    if (
+      url.pathname === "/scheduling/propose" ||
+      url.pathname === "/scheduling/confirm"
+    ) {
+      syncSchedulingTasks();
+      void schedulingHandler(req, res);
       return;
     }
 
