@@ -6,6 +6,7 @@
     "start": "node --experimental-strip-types src/main.ts",
     "test": "node --experimental-strip-types --test test/app.e2e-spec.ts",
     "test:admin-ai": "node --experimental-strip-types --test test/admin-ai.e2e-spec.ts",
+    "test:attachments": "node --experimental-strip-types --test test/attachments.e2e-spec.ts",
     "test:reminders": "node --experimental-strip-types --test test/reminders.e2e-spec.ts",
     "test:scheduling": "node --experimental-strip-types --test test/scheduling.e2e-spec.ts",
     "test:task-intake": "node --experimental-strip-types --test test/task-intake.e2e-spec.ts",

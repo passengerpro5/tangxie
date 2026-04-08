@@ -4,6 +4,19 @@ import { TasksService, type TaskInput, type TaskInputSourceRecord, type TaskReco
 
 export type TasksHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void> | void;
 
+type AttachmentKind = "image" | "doc" | "text";
+
+interface AttachmentStub {
+  kind?: AttachmentKind;
+  name?: string;
+  fileName?: string;
+  fileUrl?: string;
+}
+
+interface TaskIntakeBody extends Partial<TaskInput> {
+  attachments?: AttachmentStub[];
+}
+
 function sendJson(res: ServerResponse, statusCode: number, payload: unknown) {
   const body = JSON.stringify(payload);
   res.writeHead(statusCode, {
@@ -34,6 +47,37 @@ async function readJsonBody(req: IncomingMessage) {
   }
 
   return JSON.parse(text);
+}
+
+function buildAttachmentText(kind: AttachmentKind, fileName?: string, fileUrl?: string) {
+  const label = fileName ?? fileUrl ?? "未命名附件";
+
+  if (kind === "image") {
+    return `图片附件：${label}`;
+  }
+
+  if (kind === "doc") {
+    return `文档附件：${label}`;
+  }
+
+  return `附件：${label}`;
+}
+
+function buildIntakeInput(body: TaskIntakeBody): TaskInput {
+  const firstAttachment = Array.isArray(body.attachments) ? body.attachments[0] : undefined;
+  const sourceType = body.sourceType ?? firstAttachment?.kind ?? "text";
+  const fileName = body.fileName ?? firstAttachment?.fileName ?? firstAttachment?.name;
+  const fileUrl = body.fileUrl ?? firstAttachment?.fileUrl;
+  const trimmedRawText = typeof body.rawText === "string" ? body.rawText.trim() : "";
+
+  return {
+    rawText:
+      trimmedRawText ||
+      buildAttachmentText(sourceType, fileName, fileUrl),
+    sourceType,
+    fileName,
+    fileUrl,
+  };
 }
 
 function serializeTask(task: TaskRecord) {
@@ -76,13 +120,8 @@ export class TasksController {
 
     try {
       if (req.method === "POST" && url.pathname === "/tasks/intake") {
-        const body = ((await readJsonBody(req)) ?? {}) as Partial<TaskInput> & { rawText?: string };
-        const result = this.service.intakeTask({
-          rawText: body.rawText ?? "",
-          sourceType: body.sourceType,
-          fileName: body.fileName,
-          fileUrl: body.fileUrl,
-        });
+        const body = ((await readJsonBody(req)) ?? {}) as TaskIntakeBody;
+        const result = this.service.intakeTask(buildIntakeInput(body));
 
         sendJson(res, 201, {
           task: serializeTask(result.task),

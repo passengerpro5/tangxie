@@ -15,6 +15,8 @@ export interface ArrangeHistoryEntry {
 export interface ArrangeAttachment {
   name: string;
   kind: "image" | "doc" | "text";
+  fileName?: string;
+  fileUrl?: string;
 }
 
 export interface ArrangeSheetModel {
@@ -46,6 +48,7 @@ export interface ArrangeFlowSnapshot {
   sessionId: string | null;
   taskStatus: string | null;
   nextQuestion: string | null;
+  attachments: ArrangeAttachment[];
   confirmedBlocks: ArrangeFlowConfirmedBlock[];
 }
 
@@ -73,6 +76,7 @@ export interface ArrangeFlowState {
   sessionId: string | null;
   taskStatus: string | null;
   nextQuestion: string | null;
+  attachments: ArrangeAttachment[];
   confirmedBlocks: ArrangeFlowConfirmedBlock[];
 }
 
@@ -85,18 +89,41 @@ export interface ArrangeFlowResult {
   stage: ArrangeFlowStage;
   taskStatus: string | null;
   nextQuestion: string | null;
+  attachments: ArrangeAttachment[];
   confirmedBlocks: ArrangeFlowConfirmedBlock[];
 }
 
 export interface ArrangeFlow {
   readonly state: ArrangeFlowState;
   submitRawText(rawText: string): Promise<ArrangeFlowResult>;
+  submitAttachment(attachment: ArrangeAttachment): Promise<ArrangeFlowResult>;
   reply(answerText: string): Promise<ArrangeFlowResult>;
   propose(): Promise<ArrangeFlowResult>;
 }
 
 function cloneBlocks(blocks: ArrangeFlowConfirmedBlock[]) {
   return blocks.map((block) => ({ ...block }));
+}
+
+function cloneAttachments(attachments: ArrangeAttachment[]) {
+  return attachments.map((attachment) => ({ ...attachment }));
+}
+
+function buildAttachmentDraft(attachment: ArrangeAttachment) {
+  const fileName = attachment.fileName ?? attachment.name;
+  const rawText =
+    attachment.kind === "image"
+      ? `图片附件：${fileName ?? "未命名图片"}`
+      : attachment.kind === "doc"
+        ? `文档附件：${fileName ?? "未命名文档"}`
+        : `附件：${fileName ?? "未命名附件"}`;
+
+  return {
+    rawText,
+    sourceType: attachment.kind === "text" ? "text" : attachment.kind,
+    fileName,
+    fileUrl: attachment.fileUrl,
+  } as const;
 }
 
 export function createArrangeSheet(
@@ -135,6 +162,7 @@ function createInitialFlowState(): ArrangeFlowState {
     sessionId: null,
     taskStatus: null,
     nextQuestion: null,
+    attachments: [],
     confirmedBlocks: [],
   };
 }
@@ -157,12 +185,33 @@ export function createArrangeFlow(options: ArrangeFlowOptions): ArrangeFlow {
       state.taskStatus = intake.task.status;
       state.nextQuestion = intake.nextQuestion;
       state.stage = intake.missingFields.length > 0 ? "clarifying" : "ready_to_schedule";
+      state.attachments = [];
       state.confirmedBlocks = [];
 
       return {
         stage: state.stage,
         taskStatus: state.taskStatus,
         nextQuestion: state.nextQuestion,
+        attachments: cloneAttachments(state.attachments),
+        confirmedBlocks: cloneBlocks(state.confirmedBlocks),
+      };
+    },
+    async submitAttachment(attachment: ArrangeAttachment) {
+      const intake = await options.apiClient.intakeTask(buildAttachmentDraft(attachment));
+
+      state.taskId = intake.task.id;
+      state.sessionId = intake.clarificationSession.id;
+      state.taskStatus = intake.task.status;
+      state.nextQuestion = intake.nextQuestion;
+      state.stage = intake.missingFields.length > 0 ? "clarifying" : "ready_to_schedule";
+      state.attachments = [attachment];
+      state.confirmedBlocks = [];
+
+      return {
+        stage: state.stage,
+        taskStatus: state.taskStatus,
+        nextQuestion: state.nextQuestion,
+        attachments: cloneAttachments(state.attachments),
         confirmedBlocks: cloneBlocks(state.confirmedBlocks),
       };
     },
@@ -185,6 +234,7 @@ export function createArrangeFlow(options: ArrangeFlowOptions): ArrangeFlow {
         stage: state.stage,
         taskStatus: state.taskStatus,
         nextQuestion: state.nextQuestion,
+        attachments: cloneAttachments(state.attachments),
         confirmedBlocks: cloneBlocks(state.confirmedBlocks),
       };
     },
@@ -217,6 +267,7 @@ export function createArrangeFlow(options: ArrangeFlowOptions): ArrangeFlow {
         stage: state.stage,
         taskStatus: state.taskStatus,
         nextQuestion: state.nextQuestion,
+        attachments: cloneAttachments(state.attachments),
         confirmedBlocks: cloneBlocks(state.confirmedBlocks),
       };
     },
