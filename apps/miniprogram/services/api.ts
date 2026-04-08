@@ -13,18 +13,49 @@ export interface TaskIntakePayload {
   fileUrl?: string;
 }
 
+export interface TaskIntakeResponse {
+  task: { id: string; status: string };
+  clarificationSession: { id: string; status: string };
+  missingFields: string[];
+  nextQuestion: string | null;
+}
+
 export interface ClarificationReplyPayload {
   sessionId: string;
   answerText: string;
+}
+
+export interface ClarificationReplyResponse {
+  task: { id: string; status: string };
+  clarificationSession: { id: string; status: string };
+  missingFields: string[];
+  nextQuestion: string | null;
 }
 
 export interface ScheduleProposePayload {
   taskIds: string[];
 }
 
+export interface ScheduleBlockResponse {
+  id: string;
+  taskId: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  durationMinutes: number;
+  status: "proposed" | "confirmed";
+}
+
+export interface ScheduleProposalResponse {
+  orderedTaskIds: string[];
+  blocks: ScheduleBlockResponse[];
+}
+
 export interface ScheduleConfirmPayload {
   taskIds: string[];
 }
+
+export type ScheduleConfirmResponse = ScheduleProposalResponse;
 
 export interface ReminderGeneratePayload {
   confirmedBlocks?: Array<{
@@ -36,6 +67,26 @@ export interface ReminderGeneratePayload {
     durationMinutes: number;
     status: "confirmed";
   }>;
+}
+
+export interface ReminderRecordResponse {
+  id: string;
+  blockId: string;
+  taskId: string;
+  title: string;
+  reminderType: ReminderType;
+  remindAt: string;
+  status: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface ReminderSummaryResponse {
+  date: string;
+  totalCount: number;
+  startCount?: number;
+  deadlineCount?: number;
+  items: ReminderRecordResponse[];
 }
 
 function buildUrl(baseUrl: string, path: string) {
@@ -78,38 +129,43 @@ export function createMiniProgramApiClient(options: MiniProgramApiClientOptions)
 
   return {
     intakeTask(payload: TaskIntakePayload) {
-      return requestJson<unknown>(fetchImpl, options.baseUrl, "/tasks/intake", {
+      return requestJson<TaskIntakeResponse>(fetchImpl, options.baseUrl, "/tasks/intake", {
         method: "POST",
         body: JSON.stringify(payload),
       });
     },
     replyClarification(payload: ClarificationReplyPayload) {
-      return requestJson<unknown>(fetchImpl, options.baseUrl, "/clarification/reply", {
+      return requestJson<ClarificationReplyResponse>(fetchImpl, options.baseUrl, "/clarification/reply", {
         method: "POST",
         body: JSON.stringify(payload),
       });
     },
     proposeSchedule(payload: ScheduleProposePayload) {
-      return requestJson<unknown>(fetchImpl, options.baseUrl, "/scheduling/propose", {
+      return requestJson<ScheduleProposalResponse>(fetchImpl, options.baseUrl, "/scheduling/propose", {
         method: "POST",
         body: JSON.stringify(payload),
       });
     },
     confirmSchedule(payload: ScheduleConfirmPayload) {
-      return requestJson<unknown>(fetchImpl, options.baseUrl, "/scheduling/confirm", {
+      return requestJson<ScheduleConfirmResponse>(fetchImpl, options.baseUrl, "/scheduling/confirm", {
         method: "POST",
         body: JSON.stringify(payload),
       });
     },
     generateReminders(payload: ReminderGeneratePayload = {}) {
-      return requestJson<unknown>(fetchImpl, options.baseUrl, "/reminders/generate", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      return requestJson<{ reminders: ReminderRecordResponse[]; summary: ReminderSummaryResponse }>(
+        fetchImpl,
+        options.baseUrl,
+        "/reminders/generate",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
     },
     getDailySummary(date?: string) {
       const suffix = date ? `?date=${encodeURIComponent(date)}` : "";
-      return requestJson<unknown>(fetchImpl, options.baseUrl, `/reminders/daily-summary${suffix}`, {
+      return requestJson<ReminderSummaryResponse>(fetchImpl, options.baseUrl, `/reminders/daily-summary${suffix}`, {
         method: "GET",
       });
     },

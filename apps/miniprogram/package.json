@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --experimental-strip-types --test tests/home-page.spec.ts"
+    "test": "node --experimental-strip-types --test tests/home-page.spec.ts",
+    "test:arrange-flow": "node --experimental-strip-types --test tests/arrange-flow.spec.ts"
   }
 }

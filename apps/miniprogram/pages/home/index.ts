@@ -27,6 +27,15 @@ export interface HomePageModel {
   kanbanView: KanbanViewModel;
   arrangeSheet: ArrangeSheetModel;
   tasks: HomeTaskCard[];
+  refresh?: (confirmedBlocks: Array<{
+    id: string;
+    taskId: string;
+    title: string;
+    startAt: string;
+    endAt: string;
+    durationMinutes: number;
+    status: "confirmed";
+  }>) => HomePageModel;
 }
 
 const DEFAULT_TASKS: HomeTaskCard[] = [
@@ -74,8 +83,7 @@ function createTabs(): HomeTabModel[] {
 
 export function buildHomePage(input: { tasks?: HomeTaskCard[]; activeTab?: HomeTabId } = {}): HomePageModel {
   const tasks = input.tasks ?? DEFAULT_TASKS;
-
-  return {
+  const home: HomePageModel = {
     brand: "Time Sheet",
     title: "糖蟹",
     subtitle: "自动排期和按时提醒",
@@ -96,6 +104,76 @@ export function buildHomePage(input: { tasks?: HomeTaskCard[]; activeTab?: HomeT
     }),
     tasks,
   };
+  home.refresh = (confirmedBlocks) => refreshHomePage(home, confirmedBlocks);
+  return home;
+}
+
+function toHomeTaskCard(block: {
+  id: string;
+  taskId: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  durationMinutes: number;
+  status: "confirmed";
+}): HomeTaskCard {
+  return {
+    id: block.taskId,
+    title: block.title,
+    startAt: block.startAt,
+    endAt: block.endAt,
+    status: "scheduled",
+    deadlineLabel: "已确认",
+    durationLabel: `${Math.max(1, Math.round(block.durationMinutes / 60))} 小时`,
+    priorityLabel: "P1",
+    importanceReason: `confirmed-block=${block.id}`,
+  };
+}
+
+export function refreshHomePage(
+  home: HomePageModel,
+  confirmedBlocks: Array<{
+    id: string;
+    taskId: string;
+    title: string;
+    startAt: string;
+    endAt: string;
+    durationMinutes: number;
+    status: "confirmed";
+  }>,
+) {
+  const refreshedTasks = [...home.tasks];
+
+  for (const block of confirmedBlocks) {
+    const nextTask = toHomeTaskCard(block);
+    const existingIndex = refreshedTasks.findIndex((task) => task.id === nextTask.id);
+
+    if (existingIndex >= 0) {
+      refreshedTasks[existingIndex] = nextTask;
+      continue;
+    }
+
+    refreshedTasks.unshift(nextTask);
+  }
+
+  home.tasks = refreshedTasks;
+  home.scheduleView = createScheduleView(refreshedTasks);
+  home.kanbanView = createKanbanView(refreshedTasks);
+  home.arrangeSheet = createArrangeSheet({
+    draftText: home.arrangeSheet.draftText,
+    attachments: home.arrangeSheet.attachments,
+    history: [
+      {
+        id: `refresh-${confirmedBlocks.length || 1}`,
+        title: confirmedBlocks[0]?.title ?? "任务已安排",
+        summary: "任务已确认排期，首页已刷新。",
+        updatedAt: "2026-04-08 10:00",
+      },
+      ...home.arrangeSheet.history,
+    ],
+  });
+
+  return home;
 }
 
 export function switchHomeTab(home: HomePageModel, tabId: HomeTabId) {
