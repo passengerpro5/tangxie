@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskStatus {
+  draft
+  needs_info
+  schedulable
+  scheduled
+  done
+  overdue
+}
+
+enum ReminderStatus {
+  pending
+  sent
+  read
+  failed
+}
+
+enum ProviderType {
+  openai_compatible
+  custom
+}
+
+enum ScheduleBlockType {
+  focus
+  split
+  buffer
+}
+
+enum ScheduleStatus {
+  proposed
+  confirmed
+  completed
+  missed
+}
+
+enum ReminderType {
+  start
+  deadline
+  daily_summary
+}
+
+enum AIScene {
+  task_extract
+  clarification
+  priority_rank
+  schedule_generate
+  reminder_copy
+}
+
+enum ClarificationSessionStatus {
+  active
+  resolved
+  closed
+}
+
+model Task {
+  id                     String                  @id @default(cuid())
+  title                  String
+  description            String?
+  sourceType             String
+  status                 TaskStatus              @default(draft)
+  deadlineAt             DateTime?
+  estimatedDurationMinutes Int?
+  priorityScore          Float?
+  priorityRank           Int?
+  importanceReason       String?
+  createdByAI            Boolean                 @default(false)
+  userConfirmed          Boolean                 @default(false)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+
+  inputSources           TaskInputSource[]
+  clarificationSessions  ClarificationSession[]
+  scheduleBlocks         ScheduleBlock[]
+  reminders              Reminder[]
+
+  @@index([status, deadlineAt])
+}
+
+model TaskInputSource {
+  id            String   @id @default(cuid())
+  taskId        String
+  sourceType    String
+  rawText       String?
+  fileUrl       String?
+  fileName      String?
+  parsedSummary String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model ClarificationSession {
+  id                   String                     @id @default(cuid())
+  taskId               String
+  currentMissingFields String[]
+  messages             Json
+  aiExtractedFields     Json?
+  userConfirmedFields   Json?
+  status               ClarificationSessionStatus @default(active)
+  providerId           String?
+  modelName            String?
+  promptVersion        String?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+
+  task     Task               @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  provider AIProviderConfig?   @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  callLogs AiCallLog[]
+
+  @@index([taskId])
+  @@index([providerId])
+}
+
+model ScheduleBlock {
+  id            String           @id @default(cuid())
+  taskId        String
+  startAt       DateTime
+  endAt         DateTime
+  blockType     ScheduleBlockType @default(focus)
+  status        ScheduleStatus    @default(proposed)
+  createdBy     String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  task       Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reminders  Reminder[]
+
+  @@index([taskId, startAt])
+}
+
+model Reminder {
+  id               String         @id @default(cuid())
+  taskId           String
+  scheduleBlockId   String?
+  remindAt         DateTime
+  reminderType      ReminderType
+  status            ReminderStatus @default(pending)
+  deliveryStatus    String?
+  readStatus        DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  task          Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  scheduleBlock  ScheduleBlock? @relation(fields: [scheduleBlockId], references: [id], onDelete: SetNull)
+
+  @@index([taskId, remindAt])
+}
+
+model UserSchedulePreference {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  workdayStart       String
+  workdayEnd         String
+  lunchBreakStart    String?
+  lunchBreakEnd      String?
+  defaultFocusDuration Int   @default(50)
+  timezone           String   @default("Asia/Shanghai")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model AIProviderConfig {
+  id                String          @id @default(cuid())
+  name              String          @unique
+  providerType      ProviderType    @default(openai_compatible)
+  baseUrl           String
+  apiKeyEncrypted    String
+  defaultModel      String
+  enabled           Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  modelBindings     AIModelBinding[]
+  clarificationSessions ClarificationSession[]
+  callLogs          AiCallLog[]
+}
+
+model AIModelBinding {
+  id              String      @id @default(cuid())
+  providerId      String
+  scene           AIScene
+  modelName       String
+  temperature     Float       @default(0.2)
+  maxTokens       Int         @default(2048)
+  timeoutSeconds  Int         @default(60)
+  enabled         Boolean     @default(true)
+  isDefault       Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  provider AIProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, scene, modelName])
+  @@index([scene, enabled])
+}
+
+model PromptTemplate {
+  id             String    @id @default(cuid())
+  scene          AIScene
+  templateName   String
+  systemPrompt   String
+  developerPrompt String?
+  version        String
+  isActive       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([scene, version])
+  @@index([scene, isActive])
+}
+
+model AiCallLog {
+  id                String              @id @default(cuid())
+  providerId        String?
+  clarificationSessionId String?
+  scene             AIScene
+  modelName         String
+  promptVersion     String
+  requestPayload    Json
+  responsePayload   Json?
+  statusCode        Int?
+  durationMs        Int?
+  createdAt         DateTime            @default(now())
+
+  provider              AIProviderConfig?    @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  clarificationSession   ClarificationSession? @relation(fields: [clarificationSessionId], references: [id], onDelete: SetNull)
+
+  @@index([scene, createdAt])
+  @@index([providerId])
+}
