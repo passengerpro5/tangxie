@@ -9,9 +9,30 @@ This repository uses a pnpm workspace.
 ### Root scripts
 
 - `pnpm install`
+- `pnpm run smoke`
 - `pnpm test`
 - `pnpm run lint`
 - `pnpm run build`
+
+### Local Checks
+
+Run the lightweight smoke suite from the repository root:
+
+```bash
+pnpm run smoke
+```
+
+The smoke suite validates the core lifecycle across the API, admin shell, and mini program shell. It uses Node's built-in test runner with `--experimental-strip-types`, so it does not require WeChat tooling or a browser build.
+
+For targeted checks, run the app-level tests directly:
+
+```bash
+node --experimental-strip-types --test apps/api/test/app.e2e-spec.ts
+node --experimental-strip-types --test apps/api/test/smoke.e2e-spec.ts
+node --experimental-strip-types --test apps/admin/tests/smoke.spec.ts
+node --experimental-strip-types --test apps/miniprogram/tests/home-page.spec.ts
+node --experimental-strip-types --test apps/miniprogram/tests/smoke.spec.ts
+```
 
 ### Layout
 
