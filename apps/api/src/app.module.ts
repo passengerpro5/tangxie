@@ -1,6 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { AdminAiModule } from "./modules/admin-ai/admin-ai.module.ts";
 import { createClarificationHandler } from "./modules/clarification/clarification.controller.ts";
 import { ClarificationService } from "./modules/clarification/clarification.service.ts";
+import { createInMemoryAdminAiRepository } from "./persistence/admin-ai-repository.ts";
+import { PrismaAdminAiRepository } from "./persistence/prisma-admin-ai-repository.ts";
+import { getPrismaClient } from "./persistence/prisma-client.ts";
 import { createRemindersHandler } from "./modules/reminders/reminders.controller.ts";
 import { RemindersService } from "./modules/reminders/reminders.service.ts";
 import { createSchedulingHandler } from "./modules/scheduling/scheduling.controller.ts";
@@ -8,7 +12,11 @@ import { SchedulingService } from "./modules/scheduling/scheduling.service.ts";
 import { createTasksHandler } from "./modules/tasks/tasks.controller.ts";
 import { TasksService } from "./modules/tasks/tasks.service.ts";
 
-export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => void;
+export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => void | Promise<void>;
+
+interface AppModuleOptions {
+  now?: () => Date;
+}
 
 function sendJson(res: ServerResponse, statusCode: number, payload: unknown) {
   const body = JSON.stringify(payload);
@@ -19,15 +27,28 @@ function sendJson(res: ServerResponse, statusCode: number, payload: unknown) {
   res.end(body);
 }
 
-export function createAppHandler(): ApiHandler {
+function createDefaultAdminAiRepository(options: AppModuleOptions = {}) {
+  if (process.env.DATABASE_URL) {
+    return new PrismaAdminAiRepository(getPrismaClient());
+  }
+
+  return createInMemoryAdminAiRepository({
+    now: options.now,
+  });
+}
+
+export function createAppHandler(options: AppModuleOptions = {}): ApiHandler {
+  const adminAiRepository = createDefaultAdminAiRepository(options);
   const tasksService = new TasksService();
   const clarificationService = new ClarificationService(tasksService);
   const remindersService = new RemindersService();
   const schedulingService = new SchedulingService();
+  const adminAiModule = AdminAiModule.create({ repository: adminAiRepository });
   const tasksHandler = createTasksHandler(tasksService);
   const clarificationHandler = createClarificationHandler(clarificationService);
   const remindersHandler = createRemindersHandler(remindersService);
   const schedulingHandler = createSchedulingHandler(schedulingService);
+  const adminAiHandler = adminAiModule.handler;
 
   function syncSchedulingTasks() {
     schedulingService.seedTasks(
@@ -58,7 +79,7 @@ export function createAppHandler(): ApiHandler {
     );
   }
 
-  return (req, res) => {
+  return async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
 
     if (req.method === "GET" && url.pathname === "/health") {
@@ -67,7 +88,7 @@ export function createAppHandler(): ApiHandler {
     }
 
     if (url.pathname === "/tasks/intake") {
-      void tasksHandler(req, res);
+      await tasksHandler(req, res);
       return;
     }
 
@@ -75,7 +96,7 @@ export function createAppHandler(): ApiHandler {
       url.pathname === "/clarification/reply" ||
       url.pathname.startsWith("/clarification/sessions/")
     ) {
-      void clarificationHandler(req, res);
+      await clarificationHandler(req, res);
       return;
     }
 
@@ -84,7 +105,7 @@ export function createAppHandler(): ApiHandler {
       url.pathname === "/scheduling/confirm"
     ) {
       syncSchedulingTasks();
-      void schedulingHandler(req, res);
+      await schedulingHandler(req, res);
       return;
     }
 
@@ -94,7 +115,12 @@ export function createAppHandler(): ApiHandler {
       url.pathname === "/reminders"
     ) {
       syncReminderBlocks();
-      void remindersHandler(req, res);
+      await remindersHandler(req, res);
+      return;
+    }
+
+    if (url.pathname.startsWith("/admin/ai/")) {
+      await adminAiHandler(req, res);
       return;
     }
 
@@ -103,7 +129,7 @@ export function createAppHandler(): ApiHandler {
 }
 
 export class AppModule {
-  static createHandler() {
-    return createAppHandler();
+  static createHandler(options: AppModuleOptions = {}) {
+    return createAppHandler(options);
   }
 }

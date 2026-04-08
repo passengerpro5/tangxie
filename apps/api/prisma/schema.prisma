@@ -240,3 +240,16 @@ model AiCallLog {
   @@index([scene, createdAt])
   @@index([providerId])
 }
+
+model AdminAiAuditLog {
+  id         String    @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String
+  scene      AIScene?
+  message    String
+  createdAt  DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+}

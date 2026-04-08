@@ -16,6 +16,7 @@ test("contains the core Prisma models", () => {
     "model AIModelBinding",
     "model PromptTemplate",
     "model AiCallLog",
+    "model AdminAiAuditLog",
   ];
 
   for (const model of expectedModels) {

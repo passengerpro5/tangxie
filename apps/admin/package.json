@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --experimental-strip-types --test tests/admin-shell.spec.ts"
+    "test": "node --experimental-strip-types --test tests/admin-shell.spec.ts tests/admin-integration.spec.ts"
   }
 }

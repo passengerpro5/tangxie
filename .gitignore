@@ -14,6 +14,7 @@ build/
 coverage/
 .next/
 .worktrees/
+apps/api/.local/
 
 # Environment files
 .env
@@ -27,3 +28,6 @@ coverage/
 # Logs
 logs/
 *.log
+
+# Lockfiles generated during local app-level npm installs
+apps/api/package-lock.json

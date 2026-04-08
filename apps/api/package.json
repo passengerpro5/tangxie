@@ -3,14 +3,29 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "db:local:start": "node scripts/local-postgres.mjs start",
+    "db:local:status": "node scripts/local-postgres.mjs status",
+    "db:local:stop": "node scripts/local-postgres.mjs stop",
+    "db:local:push": "node scripts/with-local-db.mjs npm run prisma:db:push",
     "start": "node --experimental-strip-types src/main.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:db:push": "prisma db push",
     "test": "node --experimental-strip-types --test test/app.e2e-spec.ts",
     "test:admin-ai": "node --experimental-strip-types --test test/admin-ai.e2e-spec.ts",
+    "test:admin-ai:db": "node --experimental-strip-types --test test/admin-ai-prisma.e2e-spec.ts",
+    "test:admin-ai:db:local": "node scripts/with-local-db.mjs npm run test:admin-ai:db",
     "test:attachments": "node --experimental-strip-types --test test/attachments.e2e-spec.ts",
     "test:reminders": "node --experimental-strip-types --test test/reminders.e2e-spec.ts",
     "test:scheduling": "node --experimental-strip-types --test test/scheduling.e2e-spec.ts",
     "test:task-intake": "node --experimental-strip-types --test test/task-intake.e2e-spec.ts",
     "test:schema": "node --experimental-strip-types --test test/prisma-schema.spec.ts",
     "test:gateway": "node --experimental-strip-types --test test/ai-gateway.service.spec.ts"
+  },
+  "dependencies": {
+    "@embedded-postgres/darwin-arm64": "^18.3.0-beta.16",
+    "@prisma/client": "^6.16.2",
+    "embedded-postgres": "^16.13.0-beta.16",
+    "pg": "^8.16.3",
+    "prisma": "^6.16.2"
   }
 }
