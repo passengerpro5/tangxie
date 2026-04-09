@@ -1,25 +1,4 @@
-import type { ArrangeHistoryEntry } from "../../components/arrange-sheet/index.ts";
-
-export interface TaskDetailModel {
-  title: string;
-  subtitle: string;
-  statusLabel: string;
-  deadlineLabel: string;
-  durationLabel: string;
-  priorityLabel: string;
-  sourceLabel: string;
-  history: ArrangeHistoryEntry[];
-  actions: Array<{ id: string; label: string }>;
-}
-
-export function createTaskDetailPage(task: {
-  title: string;
-  statusLabel?: string;
-  deadlineLabel?: string;
-  durationLabel?: string;
-  priorityLabel?: string;
-  sourceLabel?: string;
-}): TaskDetailModel {
+export function createTaskDetailPage(task) {
   return {
     title: task.title,
     subtitle: "查看任务来源、排期和提醒",
@@ -46,15 +25,11 @@ export function createTaskDetailPage(task: {
 }
 
 export function registerTaskDetailPage() {
-  const maybePage = globalThis as typeof globalThis & {
-    Page?: (options: Record<string, unknown>) => void;
-  };
-
-  if (typeof maybePage.Page !== "function") {
+  if (typeof globalThis.Page !== "function") {
     return;
   }
 
-  maybePage.Page({
+  globalThis.Page({
     data: createTaskDetailPage({
       title: "任务详情",
     }),

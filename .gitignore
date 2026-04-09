@@ -31,3 +31,4 @@ logs/
 
 # Lockfiles generated during local app-level npm installs
 apps/api/package-lock.json
+apps/admin/package-lock.json

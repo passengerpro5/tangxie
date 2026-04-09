@@ -1,91 +1,9 @@
-import { createArrangeSheet, type ArrangeSheetModel } from "../../components/arrange-sheet/index.ts";
-import { createKanbanView, type KanbanTask, type KanbanViewModel } from "../../components/kanban-view/index.ts";
-import { createScheduleView, type ScheduleViewItem, type ScheduleViewModel } from "../../components/schedule-view/index.ts";
-import { createHomePageRuntime } from "./runtime.ts";
+import { createArrangeSheet } from "../../components/arrange-sheet/index.js";
+import { createKanbanView } from "../../components/kanban-view/index.js";
+import { createScheduleView } from "../../components/schedule-view/index.js";
+import { createHomePageRuntime } from "./runtime.js";
 
-export type HomeTabId = "schedule" | "kanban";
-
-export interface HomeTabModel {
-  id: HomeTabId;
-  label: string;
-}
-
-export interface HomeTaskCard extends ScheduleViewItem, KanbanTask {
-  deadlineLabel: string;
-  durationLabel: string;
-  priorityLabel: string;
-  importanceReason: string;
-}
-
-export interface HomeTimelineDay {
-  id: string;
-  weekLabel: string;
-  dateLabel: string;
-  isActive: boolean;
-  isPast: boolean;
-  blocks: HomeTimelineBlock[];
-}
-
-export interface HomeTimelineSlot {
-  id: string;
-  label: string;
-  topRpx: number;
-}
-
-export interface HomeTimelineBlock {
-  id: string;
-  dayId: string;
-  taskId: string;
-  title: string;
-  status: string;
-  startLabel: string;
-  endLabel: string;
-  topRpx: number;
-  heightRpx: number;
-  deadlineLabel: string;
-}
-
-export interface HomeTimelineView {
-  timezoneLabel: string;
-  activeDateId: string;
-  activeDayAnchorId: string;
-  activeDayIndex: number;
-  viewportStartLabel: string;
-  viewportEndLabel: string;
-  viewportStartMinutes: number;
-  viewportDurationMinutes: number;
-  totalHeightRpx: number;
-  initialScrollLeftPx: number;
-  initialScrollTopPx: number;
-  days: HomeTimelineDay[];
-  timeSlots: HomeTimelineSlot[];
-  blocks: HomeTimelineBlock[];
-}
-
-export interface HomePageModel {
-  brand: string;
-  title: string;
-  subtitle: string;
-  tabs: HomeTabModel[];
-  activeTab: HomeTabId;
-  primaryActionText: string;
-  scheduleView: ScheduleViewModel;
-  kanbanView: KanbanViewModel;
-  timelineView: HomeTimelineView;
-  arrangeSheet: ArrangeSheetModel;
-  tasks: HomeTaskCard[];
-  refresh?: (confirmedBlocks: Array<{
-    id: string;
-    taskId: string;
-    title: string;
-    startAt: string;
-    endAt: string;
-    durationMinutes: number;
-    status: "confirmed";
-  }>) => HomePageModel;
-}
-
-const DEFAULT_TASKS: HomeTaskCard[] = [
+const DEFAULT_TASKS = [
   {
     id: "task-1",
     title: "论文初稿",
@@ -127,30 +45,30 @@ const TIMELINE_DAY_COLUMN_WIDTH_RPX = 176;
 const TIMELINE_PAST_DAYS = 3;
 const TIMELINE_FUTURE_DAYS = 6;
 const DEFAULT_DEVICE_WIDTH_PX = 375;
-const WEEKDAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] as const;
+const WEEKDAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
-function createTabs(): HomeTabModel[] {
+function createTabs() {
   return [
     { id: "schedule", label: "日程" },
     { id: "kanban", label: "任务看板" },
   ];
 }
 
-function parseUtcDate(value: string) {
+function parseUtcDate(value) {
   return new Date(value);
 }
 
-function toUtcDateId(value: string) {
+function toUtcDateId(value) {
   const date = parseUtcDate(value);
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
-function minutesSinceUtcMidnight(value: string) {
+function minutesSinceUtcMidnight(value) {
   const date = parseUtcDate(value);
   return date.getUTCHours() * 60 + date.getUTCMinutes();
 }
 
-function formatMinutesLabel(minutes: number) {
+function formatMinutesLabel(minutes) {
   if (minutes === TIMELINE_DAY_MINUTES) {
     return "24:00";
   }
@@ -160,17 +78,12 @@ function formatMinutesLabel(minutes: number) {
   return `${String(hours).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-function createFallbackDateId(tasks: HomeTaskCard[]) {
+function createFallbackDateId(tasks) {
   return tasks[0] ? toUtcDateId(tasks[0].startAt) : "2026-04-08";
 }
 
 function resolveDeviceWidthPx() {
-  const maybeWx = globalThis as typeof globalThis & {
-    wx?: {
-      getWindowInfo?: () => { windowWidth: number };
-      getSystemInfoSync?: () => { windowWidth: number };
-    };
-  };
+  const maybeWx = globalThis;
 
   if (typeof maybeWx.wx?.getWindowInfo === "function") {
     return maybeWx.wx.getWindowInfo().windowWidth;
@@ -183,11 +96,11 @@ function resolveDeviceWidthPx() {
   return DEFAULT_DEVICE_WIDTH_PX;
 }
 
-function convertRpxToPx(valueRpx: number) {
+function convertRpxToPx(valueRpx) {
   return Math.round((valueRpx * resolveDeviceWidthPx()) / 750);
 }
 
-function resolveActiveDateId(tasks: HomeTaskCard[]) {
+function resolveActiveDateId(tasks) {
   const validTasks = tasks.filter((task) => task.startAt && task.endAt);
   const activeCandidates = validTasks.filter((task) => task.status !== "done");
   const source = activeCandidates.length > 0 ? activeCandidates : validTasks;
@@ -195,14 +108,14 @@ function resolveActiveDateId(tasks: HomeTaskCard[]) {
   return earliest ? toUtcDateId(earliest.startAt) : createFallbackDateId(tasks);
 }
 
-function addUtcDays(dateId: string, offsetDays: number) {
+function addUtcDays(dateId, offsetDays) {
   const [year, month, day] = dateId.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
   date.setUTCDate(date.getUTCDate() + offsetDays);
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
-function buildTimelineDays(activeDateId: string): HomeTimelineDay[] {
+function buildTimelineDays(activeDateId) {
   const dayOffsets = Array.from(
     { length: TIMELINE_PAST_DAYS + TIMELINE_FUTURE_DAYS + 1 },
     (_, index) => index - TIMELINE_PAST_DAYS,
@@ -223,7 +136,7 @@ function buildTimelineDays(activeDateId: string): HomeTimelineDay[] {
   });
 }
 
-function buildTimelineView(tasks: HomeTaskCard[]): HomeTimelineView {
+function buildTimelineView(tasks) {
   const activeDateId = resolveActiveDateId(tasks);
   const days = buildTimelineDays(activeDateId);
   const tasksForActiveDate = [...tasks]
@@ -285,9 +198,9 @@ function buildTimelineView(tasks: HomeTaskCard[]): HomeTimelineView {
   };
 }
 
-export function buildHomePage(input: { tasks?: HomeTaskCard[]; activeTab?: HomeTabId } = {}): HomePageModel {
+export function buildHomePage(input = {}) {
   const tasks = input.tasks ?? DEFAULT_TASKS;
-  const home: HomePageModel = {
+  const home = {
     brand: "Time Sheet",
     title: "糖蟹",
     subtitle: "自动排期和按时提醒",
@@ -313,15 +226,7 @@ export function buildHomePage(input: { tasks?: HomeTaskCard[]; activeTab?: HomeT
   return home;
 }
 
-function toHomeTaskCard(block: {
-  id: string;
-  taskId: string;
-  title: string;
-  startAt: string;
-  endAt: string;
-  durationMinutes: number;
-  status: "confirmed";
-}): HomeTaskCard {
+function toHomeTaskCard(block) {
   return {
     id: block.taskId,
     title: block.title,
@@ -335,18 +240,7 @@ function toHomeTaskCard(block: {
   };
 }
 
-export function refreshHomePage(
-  home: HomePageModel,
-  confirmedBlocks: Array<{
-    id: string;
-    taskId: string;
-    title: string;
-    startAt: string;
-    endAt: string;
-    durationMinutes: number;
-    status: "confirmed";
-  }>,
-) {
+export function refreshHomePage(home, confirmedBlocks) {
   const refreshedTasks = [...home.tasks];
 
   for (const block of confirmedBlocks) {
@@ -382,12 +276,12 @@ export function refreshHomePage(
   return home;
 }
 
-export function switchHomeTab(home: HomePageModel, tabId: HomeTabId) {
+export function switchHomeTab(home, tabId) {
   home.activeTab = tabId;
   return home;
 }
 
-export function openArrangeSheet(home: HomePageModel) {
+export function openArrangeSheet(home) {
   home.arrangeSheet = createArrangeSheet({
     draftText: home.arrangeSheet.draftText,
     attachments: home.arrangeSheet.attachments,
@@ -396,15 +290,7 @@ export function openArrangeSheet(home: HomePageModel) {
   return home;
 }
 
-export { createHomePageRuntime };
-
-registerHomePage();
-
-type RegisteredHomePage = {
-  setData(data: Record<string, unknown>): void;
-};
-
-function buildRegisteredPageData(runtime: ReturnType<typeof createHomePageRuntime>) {
+function buildRegisteredPageData(runtime) {
   return {
     home: runtime.state.home,
     activeTab: runtime.state.home.activeTab,
@@ -424,8 +310,8 @@ function buildRegisteredPageData(runtime: ReturnType<typeof createHomePageRuntim
   };
 }
 
-function syncRuntimeToPage(page: RegisteredHomePage, runtime: ReturnType<typeof createHomePageRuntime>) {
-  const currentData = (page as RegisteredHomePage & { data?: Record<string, unknown> }).data ?? {};
+function syncRuntimeToPage(page, runtime) {
+  const currentData = page.data ?? {};
   page.setData({
     ...buildRegisteredPageData(runtime),
     timelineScrollLeft:
@@ -435,39 +321,34 @@ function syncRuntimeToPage(page: RegisteredHomePage, runtime: ReturnType<typeof 
   });
 }
 
-function syncTimelineViewport(page: RegisteredHomePage, runtime: ReturnType<typeof createHomePageRuntime>) {
+function syncTimelineViewport(page, runtime) {
   page.setData({
     timelineScrollLeft: runtime.state.home.timelineView.initialScrollLeftPx,
     timelineScrollTop: runtime.state.home.timelineView.initialScrollTopPx,
   });
 }
 
-async function runPageAction(
-  page: RegisteredHomePage,
-  runtime: ReturnType<typeof createHomePageRuntime>,
-  action: () => Promise<unknown>,
-) {
+async function runPageAction(page, runtime, action) {
   try {
     await action();
   } catch {
-    // The runtime captures the user-facing error state; the page still needs a sync.
   } finally {
     syncRuntimeToPage(page, runtime);
   }
 }
 
-function registerHomePage() {
-  const maybePage = globalThis as typeof globalThis & {
-    Page?: (options: Record<string, unknown>) => void;
-  };
+export { createHomePageRuntime };
 
-  if (typeof maybePage.Page !== "function") {
+registerHomePage();
+
+function registerHomePage() {
+  if (typeof globalThis.Page !== "function") {
     return;
   }
 
   const runtime = createHomePageRuntime();
 
-  maybePage.Page({
+  globalThis.Page({
     data: buildRegisteredPageData(runtime),
     onLoad() {
       syncRuntimeToPage(this, runtime);
@@ -481,7 +362,7 @@ function registerHomePage() {
       syncRuntimeToPage(this, runtime);
       syncTimelineViewport(this, runtime);
     },
-    onTapTab(event: { currentTarget?: { dataset?: { tabId?: HomeTabId } } }) {
+    onTapTab(event) {
       const tabId = event.currentTarget?.dataset?.tabId;
       if (!tabId) {
         return;
@@ -497,15 +378,15 @@ function registerHomePage() {
       runtime.closeArrangeSheet();
       syncRuntimeToPage(this, runtime);
     },
-    onDraftInput(event: { detail?: { value?: string } }) {
+    onDraftInput(event) {
       runtime.setDraftText(event.detail?.value ?? "");
       syncRuntimeToPage(this, runtime);
     },
-    onAnswerInput(event: { detail?: { value?: string } }) {
+    onAnswerInput(event) {
       runtime.setAnswerText(event.detail?.value ?? "");
       syncRuntimeToPage(this, runtime);
     },
-    onTimelineHorizontalScroll(event: { detail?: { scrollLeft?: number } }) {
+    onTimelineHorizontalScroll(event) {
       this.setData({
         timelineHeaderOffsetPx: Number(event.detail?.scrollLeft ?? 0),
       });

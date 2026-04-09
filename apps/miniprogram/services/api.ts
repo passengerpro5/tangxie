@@ -1,9 +1,12 @@
+import type { MiniProgramTransport } from "./wechat-request.ts";
+
 export type TaskSourceType = "text" | "image" | "doc";
 export type ReminderType = "start" | "deadline" | "daily_summary";
 
 export interface MiniProgramApiClientOptions {
   baseUrl: string;
   fetchImpl?: typeof fetch;
+  transport?: MiniProgramTransport;
 }
 
 export interface TaskIntakePayload {
@@ -98,18 +101,46 @@ async function readJsonResponse(response: Response) {
   return text ? JSON.parse(text) : null;
 }
 
+function readJsonText(text: string) {
+  return text ? JSON.parse(text) : null;
+}
+
 async function requestJson<TResponse>(
   fetchImpl: typeof fetch,
+  transport: MiniProgramTransport | undefined,
   baseUrl: string,
   path: string,
   init?: RequestInit,
 ): Promise<TResponse> {
-  const response = await fetchImpl(buildUrl(baseUrl, path), {
+  const url = buildUrl(baseUrl, path);
+  const headers = {
+    "Content-Type": "application/json",
+    ...(init?.headers ?? {}),
+  };
+
+  if (transport) {
+    const response = await transport.request({
+      url,
+      method: init?.method ?? "GET",
+      headers,
+      body: typeof init?.body === "string" ? init.body : undefined,
+    });
+
+    const payload = readJsonText(response.body);
+    if (response.status < 200 || response.status >= 300) {
+      const message =
+        payload && typeof payload === "object" && "message" in payload
+          ? String((payload as { message?: unknown }).message ?? "Request failed")
+          : `Request failed with ${response.status}`;
+      throw new Error(message);
+    }
+
+    return payload as TResponse;
+  }
+
+  const response = await fetchImpl(url, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
 
   if (!response.ok) {
@@ -125,29 +156,34 @@ async function requestJson<TResponse>(
 }
 
 export function createMiniProgramApiClient(options: MiniProgramApiClientOptions) {
-  const fetchImpl = options.fetchImpl ?? fetch;
+  const transport = options.transport;
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch?.bind(globalThis);
+
+  if (!fetchImpl && !transport) {
+    throw new Error("No request transport available");
+  }
 
   return {
     intakeTask(payload: TaskIntakePayload) {
-      return requestJson<TaskIntakeResponse>(fetchImpl, options.baseUrl, "/tasks/intake", {
+      return requestJson<TaskIntakeResponse>(fetchImpl, transport, options.baseUrl, "/tasks/intake", {
         method: "POST",
         body: JSON.stringify(payload),
       });
     },
     replyClarification(payload: ClarificationReplyPayload) {
-      return requestJson<ClarificationReplyResponse>(fetchImpl, options.baseUrl, "/clarification/reply", {
+      return requestJson<ClarificationReplyResponse>(fetchImpl, transport, options.baseUrl, "/clarification/reply", {
         method: "POST",
         body: JSON.stringify(payload),
       });
     },
     proposeSchedule(payload: ScheduleProposePayload) {
-      return requestJson<ScheduleProposalResponse>(fetchImpl, options.baseUrl, "/scheduling/propose", {
+      return requestJson<ScheduleProposalResponse>(fetchImpl, transport, options.baseUrl, "/scheduling/propose", {
         method: "POST",
         body: JSON.stringify(payload),
       });
     },
     confirmSchedule(payload: ScheduleConfirmPayload) {
-      return requestJson<ScheduleConfirmResponse>(fetchImpl, options.baseUrl, "/scheduling/confirm", {
+      return requestJson<ScheduleConfirmResponse>(fetchImpl, transport, options.baseUrl, "/scheduling/confirm", {
         method: "POST",
         body: JSON.stringify(payload),
       });
@@ -155,6 +191,7 @@ export function createMiniProgramApiClient(options: MiniProgramApiClientOptions)
     generateReminders(payload: ReminderGeneratePayload = {}) {
       return requestJson<{ reminders: ReminderRecordResponse[]; summary: ReminderSummaryResponse }>(
         fetchImpl,
+        transport,
         options.baseUrl,
         "/reminders/generate",
         {
@@ -165,9 +202,15 @@ export function createMiniProgramApiClient(options: MiniProgramApiClientOptions)
     },
     getDailySummary(date?: string) {
       const suffix = date ? `?date=${encodeURIComponent(date)}` : "";
-      return requestJson<ReminderSummaryResponse>(fetchImpl, options.baseUrl, `/reminders/daily-summary${suffix}`, {
-        method: "GET",
-      });
+      return requestJson<ReminderSummaryResponse>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        `/reminders/daily-summary${suffix}`,
+        {
+          method: "GET",
+        },
+      );
     },
   };
 }

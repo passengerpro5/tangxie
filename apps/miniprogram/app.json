@@ -4,9 +4,9 @@
     "pages/task-detail/index"
   ],
   "window": {
-    "navigationBarTitleText": "糖蟹",
-    "navigationBarBackgroundColor": "#fff7ed",
+    "navigationBarTitleText": "Time Sheet",
+    "navigationBarBackgroundColor": "#f6efe1",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#fff7ed"
+    "backgroundColor": "#f6efe1"
   }
 }

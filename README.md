@@ -31,8 +31,78 @@ node --experimental-strip-types --test apps/api/test/app.e2e-spec.ts
 node --experimental-strip-types --test apps/api/test/smoke.e2e-spec.ts
 node --experimental-strip-types --test apps/admin/tests/smoke.spec.ts
 node --experimental-strip-types --test apps/miniprogram/tests/home-page.spec.ts
+node --experimental-strip-types --test apps/miniprogram/tests/runtime-config.spec.ts
+node --experimental-strip-types --test apps/miniprogram/tests/home-runtime.spec.ts
 node --experimental-strip-types --test apps/miniprogram/tests/smoke.spec.ts
 ```
+
+### Admin Console Workflow
+
+`apps/admin` now ships a real React + Vite runtime for the AI management console.
+
+Install the admin dependencies first:
+
+```bash
+cd apps/admin
+npm install
+```
+
+Start the admin dev server:
+
+```bash
+npm run dev
+```
+
+Build the admin app:
+
+```bash
+npm run build
+```
+
+Run the admin tests:
+
+```bash
+npm test
+```
+
+By default the browser app calls `http://127.0.0.1:3000`. To point the console at a different API, start Vite with `VITE_ADMIN_API_BASE_URL` set to the desired backend origin.
+
+### Mini Program Workflow
+
+`apps/miniprogram` now includes a WeChat `App/Page` runtime path for the arrange flow instead of only model-level shell code.
+
+Run the local mini program tests:
+
+```bash
+node --experimental-strip-types --test apps/miniprogram/tests/runtime-config.spec.ts apps/miniprogram/tests/home-page.spec.ts apps/miniprogram/tests/home-runtime.spec.ts apps/miniprogram/tests/arrange-flow.spec.ts apps/miniprogram/tests/smoke.spec.ts
+```
+
+Start the backend first:
+
+```bash
+cd apps/api
+npm install
+node --experimental-strip-types src/main.ts
+```
+
+Then open WeChat DevTools and import the mini program project from:
+
+```bash
+apps/miniprogram
+```
+
+Local API behavior:
+
+- The default API base URL is `http://127.0.0.1:3000`.
+- To point DevTools at another backend, run `wx.setStorageSync('TANGXIE_RUNTIME_API_BASE_URL', 'http://<your-host>:3000')` in the DevTools console, then reload the mini program.
+- To clear the override, run `wx.removeStorageSync('TANGXIE_RUNTIME_API_BASE_URL')` and reload.
+
+Expected local flow in DevTools:
+
+1. Open the home page and tap `安排任务`.
+2. Enter task text and submit to trigger intake.
+3. If the backend asks follow-up questions, answer them in the sheet.
+4. Confirm the proposed schedule and let the page refresh the home timeline.
 
 ### Local Prisma Workflow
 
@@ -70,11 +140,12 @@ Notes:
 - The embedded database writes temporary state under `apps/api/.local/`.
 - In restricted environments, starting the local database or running DB-backed tests may require execution outside the sandbox.
 - `createAppHandler()` uses Prisma for `admin-ai` when `DATABASE_URL` is present, and falls back to in-memory storage otherwise.
+- The new admin React shell uses the same `/admin/ai/*` endpoints and can run against either the in-memory or Prisma-backed API path.
 
 ### Layout
 
 - `apps/miniprogram` - WeChat mini program client
-- `apps/admin` - AI provider/model/prompt admin console
+- `apps/admin` - React + Vite AI provider/model/prompt admin console
 - `apps/api` - backend API and scheduling service
 - `packages/shared` - shared types and constants
 

@@ -15,12 +15,81 @@ test("home shell exposes schedule and kanban tabs with the arrange task entry", 
   assert.deepEqual(home.tabs.map((tab) => tab.label), ["日程", "任务看板"]);
   assert.equal(home.primaryActionText, "安排任务");
   assert.equal(home.activeTab, "schedule");
+  assert.equal(home.timelineView.viewportDurationMinutes, 24 * 60);
+  assert.equal(home.timelineView.viewportStartLabel, "00:00");
+  assert.equal(home.timelineView.viewportEndLabel, "24:00");
+  assert.equal(home.timelineView.initialScrollLeftPx, 264);
+  assert.equal(home.timelineView.initialScrollTopPx, 120);
+  assert.equal(home.timelineView.activeDayAnchorId, `timeline-day-${home.timelineView.activeDateId}`);
+  assert.equal(home.timelineView.days[0]?.isPast, true);
+  assert.equal(home.timelineView.days[3]?.id, home.timelineView.activeDateId);
+  assert.equal(home.timelineView.days[3]?.isActive, true);
+  assert.equal(home.timelineView.days[3]?.isPast, false);
+  assert.equal(home.timelineView.days[3]?.blocks[0]?.title, "论文初稿");
+  assert.equal(home.timelineView.timeSlots[0]?.label, "00:00");
+  assert.equal(home.timelineView.timeSlots[2]?.label, "02:00");
+  assert.equal(home.timelineView.timeSlots.at(-1)?.label, "24:00");
+  assert.equal(home.timelineView.days[3]?.blocks[0]?.topRpx, 240);
+  assert.equal(home.timelineView.days[3]?.blocks[0]?.heightRpx, 540);
+  assert.equal(home.timelineView.days[3]?.blocks[1]?.title, "整理资料");
+  assert.equal(home.timelineView.days[3]?.blocks[1]?.topRpx, 840);
+  assert.equal(home.timelineView.days[3]?.blocks[1]?.heightRpx, 120);
+  assert.equal(home.timelineView.days.at(-1)?.isPast, false);
 
   switchHomeTab(home, "kanban");
   assert.equal(home.activeTab, "kanban");
 
   openArrangeSheet(home);
   assert.equal(home.arrangeSheet.primaryActionText, "安排");
+});
+
+test("timeline covers the full day and defaults vertical scroll near the earliest active task", () => {
+  const home = buildHomePage({
+    tasks: [
+      {
+        id: "task-early",
+        title: "晨间整理",
+        startAt: "2026-04-08T01:15:00.000Z",
+        endAt: "2026-04-08T02:00:00.000Z",
+        status: "scheduled",
+        deadlineLabel: "今天",
+        durationLabel: "45 分钟",
+        priorityLabel: "P2",
+        importanceReason: "test",
+      },
+      {
+        id: "task-late",
+        title: "深度工作",
+        startAt: "2026-04-08T04:45:00.000Z",
+        endAt: "2026-04-08T06:15:00.000Z",
+        status: "scheduled",
+        deadlineLabel: "今天",
+        durationLabel: "90 分钟",
+        priorityLabel: "P1",
+        importanceReason: "test",
+      },
+    ],
+  });
+
+  assert.equal(home.timelineView.viewportStartLabel, "00:00");
+  assert.equal(home.timelineView.viewportEndLabel, "24:00");
+  assert.equal(home.timelineView.viewportDurationMinutes, 24 * 60);
+  assert.equal(home.timelineView.initialScrollLeftPx, 264);
+  assert.equal(home.timelineView.initialScrollTopPx, 75);
+  assert.equal(home.timelineView.activeDayAnchorId, `timeline-day-${home.timelineView.activeDateId}`);
+  assert.equal(home.timelineView.days[0]?.isPast, true);
+  assert.equal(home.timelineView.days[3]?.dateLabel, "8");
+  assert.equal(home.timelineView.days[3]?.isActive, true);
+  assert.equal(home.timelineView.days[3]?.isPast, false);
+  assert.equal(home.timelineView.days[3]?.blocks[0]?.title, "晨间整理");
+  assert.equal(home.timelineView.timeSlots[0]?.label, "00:00");
+  assert.equal(home.timelineView.timeSlots[1]?.label, "01:00");
+  assert.equal(home.timelineView.timeSlots.at(-1)?.label, "24:00");
+  assert.equal(home.timelineView.days[3]?.blocks[0]?.topRpx, 150);
+  assert.equal(home.timelineView.days[3]?.blocks[0]?.heightRpx, 90);
+  assert.equal(home.timelineView.days[3]?.blocks[1]?.topRpx, 570);
+  assert.equal(home.timelineView.days[3]?.blocks[1]?.heightRpx, 180);
+  assert.equal(home.timelineView.days.at(-1)?.isPast, false);
 });
 
 test("page models keep the schedule and kanban views aligned", () => {

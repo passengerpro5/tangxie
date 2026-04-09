@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { App, getActivePage } from "../src/App.ts";
@@ -94,4 +95,16 @@ test("admin api client routes requests to the expected endpoints", async () => {
   );
   assert.equal(calls[1]?.body?.includes('"providerType":"openai_compatible"'), true);
   assert.equal(calls[7]?.body?.includes('"input":"hello"'), true);
+});
+
+test("admin runtime exposes browser scripts and bootstrap entry", async () => {
+  const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const htmlEntry = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const browserEntry = await readFile(new URL("../src/main.tsx", import.meta.url), "utf8");
+
+  assert.equal(typeof packageJson.scripts.dev, "string");
+  assert.equal(typeof packageJson.scripts.build, "string");
+  assert.equal(typeof packageJson.scripts.preview, "string");
+  assert.equal(htmlEntry.includes('/src/main.tsx'), true);
+  assert.equal(browserEntry.includes("bootstrapAdminBrowser"), true);
 });

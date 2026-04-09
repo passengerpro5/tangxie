@@ -1,0 +1,24 @@
+.detail-page {
+  min-height: 100vh;
+  padding: 32rpx;
+  background: linear-gradient(180deg, #fff7ed 0%, #fef3c7 100%);
+}
+
+.detail-card {
+  border-radius: 32rpx;
+  padding: 28rpx;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.detail-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.detail-subtitle {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #78716c;
+}

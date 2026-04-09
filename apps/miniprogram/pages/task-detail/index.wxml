@@ -1,0 +1,6 @@
+<view class="detail-page">
+  <view class="detail-card">
+    <text class="detail-title">{{title}}</text>
+    <text class="detail-subtitle">{{subtitle}}</text>
+  </view>
+</view>

@@ -1,58 +1,297 @@
 <view class="page">
-  <view class="hero">
-    <text class="brand">Time Sheet</text>
-    <text class="title">糖蟹</text>
-    <text class="subtitle">自动排期和按时提醒</text>
+  <view class="workspace">
+    <view wx:if="{{error}}" class="status-banner status-banner-error">
+      <text>{{error}}</text>
+    </view>
+
+    <view wx:if="{{notice && !sheetOpen}}" class="status-banner status-banner-notice">
+      <text>{{notice}}</text>
+    </view>
+
+    <view class="workspace-card">
+      <view class="tab-strip">
+        <view
+          wx:for="{{home.tabs}}"
+          wx:for-item="tab"
+          wx:key="id"
+          class="tab-item {{activeTab === tab.id ? 'tab-item-active' : ''}}"
+          data-tab-id="{{tab.id}}"
+          bindtap="onTapTab"
+        >
+          <text>{{tab.label}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{activeTab === 'schedule'}}" class="timeline-panel">
+        <view wx:if="{{home.timelineView.blocks.length}}" class="timeline-stage">
+          <view class="timeline-stage-head">
+            <view class="timeline-gutter-head">
+              <view class="date-rail-timezone">
+                <text class="date-rail-timezone-label">{{home.timelineView.timezoneLabel}}</text>
+              </view>
+            </view>
+
+            <view class="timeline-scroll-head">
+              <view class="timeline-scroll-head-inner" style="transform: translateX(-{{timelineHeaderOffsetPx}}px);">
+                <view class="date-rail">
+                  <view
+                    wx:for="{{home.timelineView.days}}"
+                    wx:for-item="day"
+                    wx:key="id"
+                    class="date-rail-day {{day.isActive ? 'date-rail-day-active' : ''}} {{day.isPast ? 'date-rail-day-past' : ''}}"
+                  >
+                    <text class="date-rail-week">{{day.weekLabel}}</text>
+                    <text class="date-rail-date">{{day.dateLabel}}</text>
+                  </view>
+
+                  <view class="date-rail-icon">
+                    <text class="date-rail-icon-mark">▣</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <scroll-view
+            class="timeline-viewport"
+            scroll-y="true"
+            enhanced="true"
+            scroll-top="{{timelineScrollTop}}"
+            show-scrollbar="false"
+          >
+            <view class="timeline-stage-body">
+              <view class="timeline-gutter-shell">
+                <view class="timeline-gutter" style="height: {{home.timelineView.totalHeightRpx}}rpx;">
+                  <view
+                    wx:for="{{home.timelineView.timeSlots}}"
+                    wx:for-item="slot"
+                    wx:key="id"
+                    class="timeline-hour"
+                    style="top: {{slot.topRpx}}rpx;"
+                  >
+                    <text class="timeline-hour-label">{{slot.label}}</text>
+                  </view>
+                </view>
+              </view>
+
+              <scroll-view
+                class="timeline-scroll"
+                scroll-x="true"
+                enhanced="true"
+                scroll-left="{{timelineScrollLeft}}"
+                show-scrollbar="false"
+                bindscroll="onTimelineHorizontalScroll"
+              >
+                <view class="timeline-scroll-inner">
+                  <view class="timeline-days" style="height: {{home.timelineView.totalHeightRpx}}rpx;">
+                    <view
+                      wx:for="{{home.timelineView.days}}"
+                      wx:for-item="day"
+                      wx:key="id"
+                      id="timeline-day-{{day.id}}"
+                      class="timeline-day-column {{day.isPast ? 'timeline-day-column-past' : ''}}"
+                    >
+                      <view
+                        wx:for="{{home.timelineView.timeSlots}}"
+                        wx:for-item="slot"
+                        wx:key="id"
+                        class="timeline-grid-line"
+                        style="top: {{slot.topRpx}}rpx;"
+                      ></view>
+
+                      <view
+                        wx:for="{{day.blocks}}"
+                        wx:for-item="block"
+                        wx:key="id"
+                        class="timeline-block timeline-block-{{block.status}} {{day.isPast ? 'timeline-block-past' : ''}}"
+                        style="top: {{block.topRpx}}rpx; height: {{block.heightRpx}}rpx;"
+                      >
+                        <view class="timeline-block-body">
+                          <view class="timeline-block-head">
+                            <text class="timeline-block-title">{{block.title}}</text>
+                          </view>
+                          <text class="timeline-block-copy">{{block.startLabel}} - {{block.endLabel}}</text>
+                          <text wx:if="{{block.deadlineLabel}}" class="timeline-block-copy">Deadline · {{block.deadlineLabel}}</text>
+                        </view>
+                      </view>
+                    </view>
+                  </view>
+                </view>
+              </scroll-view>
+            </view>
+          </scroll-view>
+        </view>
+
+        <view wx:else class="timeline-empty">
+          <text class="timeline-empty-title">暂无排期</text>
+          <text class="timeline-empty-copy">{{scheduleEmptyState}}</text>
+        </view>
+      </view>
+
+      <view wx:else class="kanban-panel">
+        <view class="timeline-panel-head">
+          <view>
+            <text class="timeline-panel-title">{{home.kanbanView.title}}</text>
+            <text class="timeline-panel-copy">{{home.kanbanView.subtitle}}</text>
+          </view>
+          <view class="timeline-panel-chip">
+            <text>看板</text>
+          </view>
+        </view>
+
+        <view class="kanban-columns">
+          <view wx:for="{{home.kanbanView.columns}}" wx:for-item="column" wx:key="id" class="kanban-column">
+            <view class="kanban-column-head">
+              <text class="kanban-column-title">{{column.title}}</text>
+              <text class="kanban-column-count">{{column.count}}</text>
+            </view>
+
+            <view wx:if="{{column.tasks.length}}" class="kanban-chip-list">
+              <view wx:for="{{column.tasks}}" wx:for-item="task" wx:key="id" class="kanban-chip">
+                <text class="kanban-chip-title">{{task.title}}</text>
+              </view>
+            </view>
+
+            <text wx:else class="kanban-column-empty">{{kanbanEmptyState}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="planner-launch" bindtap="onOpenArrange">
+      <view class="planner-launch-icon">
+        <text class="planner-launch-plus">+</text>
+      </view>
+      <view class="planner-launch-copy">
+        <text class="planner-launch-title">+ {{home.primaryActionText}}</text>
+      </view>
+    </view>
   </view>
 
-  <view class="tabs">
-    <view class="tab tab-active">
-      <text>日程</text>
-    </view>
-    <view class="tab">
-      <text>任务看板</text>
-    </view>
-  </view>
+  <view wx:if="{{sheetOpen}}" class="planner-mask" bindtap="onCloseArrange"></view>
+  <view wx:if="{{sheetOpen}}" class="planner-sheet">
+    <view class="planner-sheet-surface">
+      <view class="planner-sheet-handle"></view>
 
-  <view class="panel schedule-panel">
-    <view class="panel-header">
-      <text class="panel-title">日程</text>
-      <text class="panel-caption">按时间轴查看任务块</text>
-    </view>
-    <view class="timeline">
-      <view class="timeline-item timeline-item-primary">
-        <text class="timeline-title">论文初稿</text>
-        <text class="timeline-meta">02:00 - 06:30</text>
+      <view class="planner-sheet-head">
+        <view class="planner-sheet-heading">
+          <text class="planner-sheet-title">{{home.arrangeSheet.title}}</text>
+          <text class="planner-sheet-subtitle">{{home.arrangeSheet.subtitle}}</text>
+        </view>
+        <view class="planner-sheet-close" bindtap="onCloseArrange">
+          <text>关闭</text>
+        </view>
       </view>
-      <view class="timeline-item">
-        <text class="timeline-title">整理资料</text>
-        <text class="timeline-meta">待安排</text>
-      </view>
-    </view>
-  </view>
 
-  <view class="panel kanban-panel">
-    <view class="panel-header">
-      <text class="panel-title">任务看板</text>
-      <text class="panel-caption">待补信息、已安排、已完成</text>
-    </view>
-    <view class="kanban-grid">
-      <view class="kanban-card">
-        <text class="kanban-label">待补信息</text>
-        <text class="kanban-count">1</text>
-      </view>
-      <view class="kanban-card">
-        <text class="kanban-label">已安排</text>
-        <text class="kanban-count">1</text>
-      </view>
-      <view class="kanban-card">
-        <text class="kanban-label">已完成</text>
-        <text class="kanban-count">1</text>
-      </view>
-    </view>
-  </view>
+      <scroll-view class="planner-thread" scroll-y="true" show-scrollbar="false">
+        <view class="planner-thread-section">
+          <text class="planner-thread-kicker">历史记录</text>
+          <view wx:for="{{home.arrangeSheet.history}}" wx:for-item="entry" wx:key="id" class="planner-history-card">
+            <view class="planner-history-head">
+              <text class="planner-history-title">{{entry.title}}</text>
+              <text class="planner-history-time">{{entry.updatedAt}}</text>
+            </view>
+            <text class="planner-history-summary">{{entry.summary}}</text>
+          </view>
+        </view>
 
-  <view class="primary-action">
-    <text>安排任务</text>
+        <view class="planner-conversation">
+          <view wx:if="{{stage === 'idle'}}" class="planner-message planner-message-system planner-message-hero">
+            <text class="planner-message-title">开始规划</text>
+            <text class="planner-message-body">把任务丢给糖蟹，它会自动追问 deadline、时长和开始时间。</text>
+          </view>
+
+          <view wx:if="{{draftText}}" class="planner-message planner-message-user">
+            <text class="planner-message-title">当前输入</text>
+            <text class="planner-message-body">{{draftText}}</text>
+          </view>
+
+          <view wx:if="{{loading}}" class="planner-message planner-message-system">
+            <text class="planner-message-title">糖蟹正在处理</text>
+            <text class="planner-message-body">正在和排期服务同步...</text>
+          </view>
+
+          <view wx:if="{{stage === 'clarifying'}}" class="planner-message planner-message-system">
+            <text class="planner-message-title">系统追问</text>
+            <text class="planner-message-body">{{nextQuestion}}</text>
+          </view>
+
+          <view wx:if="{{stage === 'ready_to_schedule'}}" class="planner-message planner-message-system">
+            <text class="planner-message-title">信息已齐</text>
+            <text class="planner-message-body">可以确认排期并生成提醒了。</text>
+          </view>
+
+          <view wx:if="{{confirmedBlocks.length}}" class="planner-message planner-message-system">
+            <text class="planner-message-title">已确认排期</text>
+            <view wx:for="{{confirmedBlocks}}" wx:for-item="block" wx:key="id" class="planner-confirmed-row">
+              <text class="planner-confirmed-name">{{block.title}}</text>
+              <text class="planner-confirmed-time">{{block.startAt}} - {{block.endAt}}</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="planner-composer">
+        <view wx:if="{{home.arrangeSheet.attachments.length}}" class="planner-attachments">
+          <view wx:for="{{home.arrangeSheet.attachments}}" wx:for-item="attachment" wx:key="name" class="planner-attachment-chip">
+            <text class="planner-attachment-name">{{attachment.name}}</text>
+          </view>
+        </view>
+
+        <view class="planner-composer-row">
+          <textarea
+            wx:if="{{stage === 'idle'}}"
+            class="planner-input"
+            value="{{draftText}}"
+            placeholder="{{home.arrangeSheet.inputPlaceholder}}"
+            bindinput="onDraftInput"
+            maxlength="-1"
+            auto-height
+          />
+
+          <input
+            wx:if="{{stage === 'clarifying'}}"
+            class="planner-input planner-input-answer"
+            value="{{answerText}}"
+            placeholder="补充 deadline、时长或开始时间"
+            bindinput="onAnswerInput"
+          />
+
+          <view wx:if="{{stage === 'ready_to_schedule'}}" class="planner-ready-copy">
+            <text>信息已经足够，点击右侧按钮确认排期。</text>
+          </view>
+
+          <button
+            wx:if="{{stage === 'idle'}}"
+            class="planner-send"
+            loading="{{loading}}"
+            disabled="{{loading}}"
+            bindtap="onSubmitDraft"
+          >
+            {{home.arrangeSheet.primaryActionText}}
+          </button>
+
+          <button
+            wx:if="{{stage === 'clarifying'}}"
+            class="planner-send"
+            loading="{{loading}}"
+            disabled="{{loading}}"
+            bindtap="onSubmitClarification"
+          >
+            {{home.arrangeSheet.primaryActionText}}
+          </button>
+
+          <button
+            wx:if="{{stage === 'ready_to_schedule'}}"
+            class="planner-send"
+            loading="{{loading}}"
+            disabled="{{loading}}"
+            bindtap="onProposeSchedule"
+          >
+            {{home.arrangeSheet.primaryActionText}}
+          </button>
+        </view>
+      </view>
+    </view>
   </view>
 </view>
