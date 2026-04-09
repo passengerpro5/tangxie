@@ -416,6 +416,8 @@ function buildRegisteredPageData(runtime: ReturnType<typeof createHomePageRuntim
     error: runtime.state.error,
     notice: runtime.state.notice,
     sheetOpen: runtime.state.sheetOpen,
+    arrangeTab: runtime.state.arrangeTab,
+    attachmentPickerOpen: runtime.state.attachmentPickerOpen,
     draftText: runtime.state.draftText,
     answerText: runtime.state.answerText,
     stage: runtime.state.stage,
@@ -496,6 +498,37 @@ function registerHomePage() {
     onCloseArrange() {
       runtime.closeArrangeSheet();
       syncRuntimeToPage(this, runtime);
+    },
+    onSwitchArrangeTab(event: { currentTarget?: { dataset?: { arrangeTab?: "arrange" | "history" } } }) {
+      const arrangeTab = event.currentTarget?.dataset?.arrangeTab;
+      if (!arrangeTab) {
+        return;
+      }
+      runtime.switchArrangeTab(arrangeTab);
+      syncRuntimeToPage(this, runtime);
+    },
+    onOpenAttachmentPicker() {
+      runtime.openAttachmentPicker();
+      syncRuntimeToPage(this, runtime);
+    },
+    onCloseAttachmentPicker() {
+      runtime.closeAttachmentPicker();
+      syncRuntimeToPage(this, runtime);
+    },
+    async onSelectAttachmentAction(event: { currentTarget?: { dataset?: { attachmentKind?: "doc" | "image" | "text" } } }) {
+      const attachmentKind = event.currentTarget?.dataset?.attachmentKind;
+      if (!attachmentKind) {
+        return;
+      }
+
+      const attachment =
+        attachmentKind === "doc"
+          ? { name: "纤维瘤提取.docx", kind: "doc" as const, fileName: "纤维瘤提取.docx" }
+          : attachmentKind === "image"
+            ? { name: "任务截图.png", kind: "image" as const, fileName: "任务截图.png" }
+            : { name: "粘贴文本", kind: "text" as const, fileName: "粘贴文本" };
+
+      await runPageAction(this, runtime, () => runtime.submitAttachment(attachment));
     },
     onDraftInput(event: { detail?: { value?: string } }) {
       runtime.setDraftText(event.detail?.value ?? "");

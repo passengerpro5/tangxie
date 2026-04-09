@@ -1,7 +1,15 @@
 import { createMiniProgramApiClient } from "../../services/api.ts";
 import { resolveMiniProgramRuntimeConfig, type MiniProgramRuntimeConfig } from "../../config/runtime.ts";
 import { createWeChatRequestTransport } from "../../services/wechat-request.ts";
-import { createArrangeFlow, type ArrangeFlowApiClient, type ArrangeFlowConfirmedBlock, type ArrangeFlowStage } from "../../components/arrange-sheet/index.ts";
+import {
+  createArrangeFlow,
+  createArrangeSheet,
+  type ArrangeAttachment,
+  type ArrangeFlowApiClient,
+  type ArrangeFlowConfirmedBlock,
+  type ArrangeFlowStage,
+  type ArrangeThreadItem,
+} from "../../components/arrange-sheet/index.ts";
 import { buildHomePage, openArrangeSheet, refreshHomePage, switchHomeTab, type HomePageModel, type HomeTabId } from "./index.ts";
 
 export interface HomePageRuntimeState {
@@ -10,6 +18,8 @@ export interface HomePageRuntimeState {
   error: string | null;
   notice: string | null;
   sheetOpen: boolean;
+  arrangeTab: "arrange" | "history";
+  attachmentPickerOpen: boolean;
   draftText: string;
   answerText: string;
   stage: ArrangeFlowStage;
@@ -28,8 +38,12 @@ export interface HomePageRuntime {
   setDraftText(value: string): void;
   setAnswerText(value: string): void;
   switchTab(tabId: HomeTabId): void;
+  switchArrangeTab(tabId: "arrange" | "history"): void;
   openArrangeSheet(): void;
   closeArrangeSheet(): void;
+  openAttachmentPicker(): void;
+  closeAttachmentPicker(): void;
+  submitAttachment(attachment: ArrangeAttachment): Promise<{ stage: ArrangeFlowStage }>;
   submitDraft(): Promise<{ stage: ArrangeFlowStage }>;
   submitClarification(answerText?: string): Promise<{ stage: ArrangeFlowStage }>;
   proposeSchedule(): Promise<{ stage: ArrangeFlowStage }>;
@@ -42,6 +56,8 @@ function createInitialState(initialHome?: HomePageModel): HomePageRuntimeState {
     error: null,
     notice: null,
     sheetOpen: false,
+    arrangeTab: "arrange",
+    attachmentPickerOpen: false,
     draftText: "",
     answerText: "",
     stage: "idle",
@@ -77,6 +93,83 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
     Object.assign(state, patch);
   }
 
+  function syncArrangeSheet(threadItems: ArrangeThreadItem[], attachments: ArrangeAttachment[] = state.home.arrangeSheet.attachments) {
+    state.home.arrangeSheet = createArrangeSheet({
+      draftText: state.draftText,
+      attachments,
+      history: state.home.arrangeSheet.history,
+      threadItems,
+    });
+  }
+
+  function buildThreadItems(input: {
+    draftText?: string;
+    attachment?: ArrangeAttachment | null;
+    nextQuestion?: string | null;
+    stage: ArrangeFlowStage;
+    confirmedBlocks?: ArrangeFlowConfirmedBlock[];
+  }) {
+    const threadItems: ArrangeThreadItem[] = [];
+
+    if (input.stage === "idle" && !input.draftText && !input.attachment) {
+      threadItems.push({
+        id: "thread-hero",
+        kind: "hero",
+        title: "开始规划",
+        body: "把任务丢给糖蟹，它会自动追问 deadline、时长和开始时间。",
+        accent: "soft",
+      });
+    }
+
+    if (input.draftText) {
+      threadItems.push({
+        id: "thread-user-input",
+        kind: "user_input",
+        title: "当前输入",
+        body: input.draftText,
+      });
+    }
+
+    if (input.attachment) {
+      threadItems.push({
+        id: `thread-attachment-${input.attachment.name}`,
+        kind: "extracted_attachment",
+        title: "帮我拆解这个任务",
+        body: "已经读取文件内容。",
+        attachmentName: input.attachment.name,
+      });
+    }
+
+    if (input.nextQuestion) {
+      threadItems.push({
+        id: "thread-system-question",
+        kind: "system_question",
+        title: "系统追问",
+        body: input.nextQuestion,
+      });
+    }
+
+    if (input.stage === "ready_to_schedule") {
+      threadItems.push({
+        id: "thread-ready",
+        kind: "ready",
+        title: "信息已齐",
+        body: "可以确认排期并生成提醒了。",
+      });
+    }
+
+    if (input.confirmedBlocks?.length) {
+      threadItems.push({
+        id: "thread-confirmed",
+        kind: "confirmed",
+        title: "已确认排期",
+        body: input.confirmedBlocks.map((block) => `${block.title} ${block.startAt} - ${block.endAt}`).join("\n"),
+      });
+    }
+
+    return threadItems;
+  }
+
   async function run<T>(work: () => Promise<T>) {
     setState({ loading: true, error: null, notice: null });
     try {
@@ -103,12 +196,45 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
     switchTab(tabId: HomeTabId) {
       switchHomeTab(state.home, tabId);
     },
+    switchArrangeTab(tabId: "arrange" | "history") {
+      state.arrangeTab = tabId;
+    },
     openArrangeSheet() {
       openArrangeSheet(state.home);
       state.sheetOpen = true;
+      state.arrangeTab = "arrange";
+      syncArrangeSheet(buildThreadItems({ stage: state.stage }));
     },
     closeArrangeSheet() {
       state.sheetOpen = false;
+      state.attachmentPickerOpen = false;
+    },
+    openAttachmentPicker() {
+      state.attachmentPickerOpen = true;
+    },
+    closeAttachmentPicker() {
+      state.attachmentPickerOpen = false;
+    },
+    async submitAttachment(attachment: ArrangeAttachment) {
+      return run(async () => {
+        const result = await flow.submitAttachment(attachment);
+        state.sheetOpen = true;
+        state.attachmentPickerOpen = false;
+        state.stage = result.stage;
+        state.nextQuestion = result.nextQuestion;
+        state.confirmedBlocks = result.confirmedBlocks;
+        state.notice = "已读取附件并进入追问";
+        syncArrangeSheet(
+          buildThreadItems({
+            attachment,
+            nextQuestion: result.nextQuestion,
+            stage: result.stage,
+            confirmedBlocks: result.confirmedBlocks,
+          }),
+          result.attachments,
+        );
+        return { stage: result.stage };
+      });
     },
     async submitDraft() {
       return run(async () => {
@@ -119,6 +245,14 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
         state.nextQuestion = result.nextQuestion;
         state.confirmedBlocks = result.confirmedBlocks;
         state.notice = result.stage === "clarifying" ? "已进入追问" : "任务已进入排期";
+        syncArrangeSheet(
+          buildThreadItems({
+            draftText: state.draftText,
+            nextQuestion: result.nextQuestion,
+            stage: result.stage,
+            confirmedBlocks: result.confirmedBlocks,
+          }),
+        );
         return { stage: result.stage };
       });
     },
@@ -128,6 +262,15 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
         state.stage = result.stage;
         state.nextQuestion = result.nextQuestion;
         state.notice = "补充信息已提交";
+        syncArrangeSheet(
+          buildThreadItems({
+            draftText: state.draftText,
+            nextQuestion: result.nextQuestion,
+            stage: result.stage,
+            confirmedBlocks: result.confirmedBlocks,
+          }),
+          result.attachments,
+        );
         return { stage: result.stage };
       });
     },
@@ -139,6 +282,14 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
         state.confirmedBlocks = result.confirmedBlocks;
         state.sheetOpen = false;
         state.notice = "排期已确认并已刷新首页";
+        syncArrangeSheet(
+          buildThreadItems({
+            draftText: state.draftText,
+            stage: result.stage,
+            confirmedBlocks: result.confirmedBlocks,
+          }),
+          result.attachments,
+        );
         return { stage: result.stage };
       });
     },

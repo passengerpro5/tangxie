@@ -27,7 +27,30 @@ export interface ArrangeSheetModel {
   draftText: string;
   attachments: ArrangeAttachment[];
   history: ArrangeHistoryEntry[];
+  tabs: ArrangeSheetTab[];
+  threadItems: ArrangeThreadItem[];
+  attachmentActions: ArrangeAttachmentAction[];
   canSubmit: boolean;
+}
+
+export interface ArrangeSheetTab {
+  id: "arrange" | "history";
+  label: string;
+}
+
+export interface ArrangeThreadItem {
+  id: string;
+  kind: "hero" | "user_input" | "extracted_attachment" | "system_question" | "ready" | "confirmed";
+  title: string;
+  body?: string;
+  accent?: string;
+  attachmentName?: string;
+}
+
+export interface ArrangeAttachmentAction {
+  id: "doc" | "image" | "text";
+  label: string;
+  kind: ArrangeAttachment["kind"];
 }
 
 export interface ArrangeFlowConfirmedBlock {
@@ -131,6 +154,7 @@ export function createArrangeSheet(
     draftText?: string;
     attachments?: ArrangeAttachment[];
     history?: ArrangeHistoryEntry[];
+    threadItems?: ArrangeThreadItem[];
   } = {},
 ): ArrangeSheetModel {
   const draftText = input.draftText ?? "";
@@ -150,6 +174,24 @@ export function createArrangeSheet(
         summary: "上传了一个文档，已提取出 3 个任务。",
         updatedAt: "2026-04-08 09:20",
       },
+    ],
+    tabs: [
+      { id: "arrange", label: "安排任务" },
+      { id: "history", label: "历史记录" },
+    ],
+    threadItems: input.threadItems ?? [
+      {
+        id: "thread-hero",
+        kind: "hero",
+        title: "开始规划",
+        body: "把任务丢给糖蟹，它会自动追问 deadline、时长和开始时间。",
+        accent: "soft",
+      },
+    ],
+    attachmentActions: [
+      { id: "doc", label: "上传文档", kind: "doc" },
+      { id: "image", label: "上传图片", kind: "image" },
+      { id: "text", label: "粘贴文本", kind: "text" },
     ],
     canSubmit: draftText.trim().length > 0 || attachments.length > 0,
   };

@@ -92,7 +92,6 @@ test("home page template binds runtime data and interaction handlers for WeChat 
   assert.equal(template.includes('class="planner-sheet"'), true);
   assert.equal(template.includes('class="planner-thread"'), true);
   assert.equal(template.includes('class="planner-composer"'), true);
-  assert.equal(template.includes("开始规划"), true);
   assert.equal(template.includes("历史记录"), true);
 
   assert.equal(template.includes('wx:for="{{home.tabs}}"'), true);
@@ -117,17 +116,27 @@ test("home page template binds runtime data and interaction handlers for WeChat 
   assert.equal(template.includes('wx:if="{{sheetOpen}}"'), true);
   assert.equal(template.includes('bindinput="onDraftInput"'), true);
   assert.equal(template.includes('bindinput="onAnswerInput"'), true);
+  assert.equal(template.includes('bindtap="onOpenAttachmentPicker"'), true);
+  assert.equal(template.includes('bindtap="onSelectAttachmentAction"'), true);
+  assert.equal(template.includes('bindtap="onSwitchArrangeTab"'), true);
+  assert.equal(template.includes('data-arrange-tab="{{tab.id}}"'), true);
   assert.equal(template.includes('bindtap="onSubmitDraft"'), true);
   assert.equal(template.includes('bindtap="onSubmitClarification"'), true);
   assert.equal(template.includes('bindtap="onProposeSchedule"'), true);
+  assert.equal(template.includes('wx:for="{{home.arrangeSheet.threadItems}}"'), true);
+  assert.equal(template.includes('wx:for="{{home.arrangeSheet.tabs}}"'), true);
+  assert.equal(template.includes('wx:if="{{arrangeTab === \'history\'}}"'), true);
+  assert.equal(template.includes('wx:if="{{arrangeTab === \'arrange\'}}"'), true);
+  assert.equal(template.includes('class="planner-message planner-message-{{item.kind}}"'), true);
+  assert.equal(template.includes('wx:if="{{attachmentPickerOpen && arrangeTab === \'arrange\'}}"'), true);
 
   assert.equal(template.includes("{{loading}}"), true);
   assert.equal(template.includes("{{error}}"), true);
   assert.equal(template.includes("{{notice}}"), true);
-  assert.equal(template.includes("{{nextQuestion}}"), true);
-  assert.equal(template.includes("{{stage === 'idle'}}"), true);
-  assert.equal(template.includes("{{stage === 'clarifying'}}"), true);
-  assert.equal(template.includes("{{stage === 'ready_to_schedule'}}"), true);
+  assert.equal(template.includes("{{item.body}}"), true);
+  assert.equal(template.includes("{{item.attachmentName}}"), true);
+  assert.equal(template.includes("关闭"), false);
+  assert.equal(template.includes("planner-sheet-close-icon"), true);
 });
 
 test("devtools runtime has executable js entry files for app and declared pages", async () => {

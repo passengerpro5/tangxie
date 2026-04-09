@@ -128,3 +128,51 @@ test("arrange flow submits intake, clarifies missing fields, schedules, confirms
   assert.equal(refreshed.tasks[0]?.status, "scheduled");
   assert.equal(refreshed.arrangeSheet.history[0]?.title.includes("论文初稿"), true);
 });
+
+test("arrange flow supports document attachment intake before clarification", async () => {
+  const calls: string[] = [];
+  const apiClient = createMiniProgramApiClient({
+    baseUrl: "https://api.tangxie.test",
+    fetchImpl: async (input, init) => {
+      const url = String(input);
+      calls.push(`${init?.method ?? "GET"} ${new URL(url).pathname}`);
+
+      if (url.endsWith("/tasks/intake")) {
+        const payload = JSON.parse(String(init?.body ?? "{}")) as {
+          sourceType?: string;
+          fileName?: string;
+        };
+
+        assert.equal(payload.sourceType, "doc");
+        assert.equal(payload.fileName, "纤维瘤提取.docx");
+
+        return new Response(
+          JSON.stringify({
+            task: { id: "task_doc_1", status: "needs_info" },
+            clarificationSession: { id: "session_doc_1", status: "active" },
+            missingFields: ["deadlineAt"],
+            nextQuestion: "请问你需要在什么时间之前完成这个任务，什么时候开始？",
+          }),
+          { status: 201, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify({ message: "Unexpected request" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+  });
+
+  const flow = createArrangeFlow({ apiClient });
+  const afterAttachment = await flow.submitAttachment({
+    name: "纤维瘤提取.docx",
+    kind: "doc",
+    fileName: "纤维瘤提取.docx",
+  });
+
+  assert.equal(afterAttachment.stage, "clarifying");
+  assert.equal(afterAttachment.attachments[0]?.name, "纤维瘤提取.docx");
+  assert.equal(afterAttachment.nextQuestion, "请问你需要在什么时间之前完成这个任务，什么时候开始？");
+  assert.deepEqual(calls, ["POST /tasks/intake"]);
+});
