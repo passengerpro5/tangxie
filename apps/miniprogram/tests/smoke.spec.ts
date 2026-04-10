@@ -88,10 +88,13 @@ test("home page template binds runtime data and interaction handlers for WeChat 
 
   assert.equal(template.includes('class="workspace"'), true);
   assert.equal(template.includes('class="workspace-card"'), true);
+  assert.equal(template.includes("planner-toast"), true);
   assert.equal(template.includes('class="timeline-stage"'), true);
-  assert.equal(template.includes('class="planner-sheet"'), true);
+  assert.equal(template.includes("planner-sheet "), true);
   assert.equal(template.includes('class="planner-thread"'), true);
   assert.equal(template.includes('class="planner-composer"'), true);
+  assert.equal(template.includes("sheetVisible"), true);
+  assert.equal(template.includes("sheetAnimationState"), true);
   assert.equal(template.includes("历史记录"), true);
 
   assert.equal(template.includes('wx:for="{{home.tabs}}"'), true);
@@ -113,7 +116,8 @@ test("home page template binds runtime data and interaction handlers for WeChat 
   assert.equal(template.includes('wx:for="{{home.kanbanView.columns}}"'), true);
   assert.equal(template.includes('bindtap="onOpenArrange"'), true);
 
-  assert.equal(template.includes('wx:if="{{sheetOpen}}"'), true);
+  assert.equal(template.includes('wx:if="{{sheetOpen}}"'), false);
+  assert.equal(template.includes('wx:if="{{sheetVisible}}"'), true);
   assert.equal(template.includes('class="planner-sheet-title"'), false);
   assert.equal(template.includes('bindtouchstart="onArrangeHandleTouchStart"'), true);
   assert.equal(template.includes('bindtouchmove="onArrangeHandleTouchMove"'), true);
@@ -152,13 +156,14 @@ test("home page template binds runtime data and interaction handlers for WeChat 
   assert.equal(template.includes('wx:if="{{attachmentPickerOpen && arrangeTab === \'arrange\'}}"'), true);
 
   assert.equal(template.includes("{{loading}}"), true);
-  assert.equal(template.includes("{{error}}"), true);
-  assert.equal(template.includes("{{notice}}"), true);
+  assert.equal(template.includes("{{toastMessage}}"), true);
+  assert.equal(template.includes("{{toastVisible}}"), true);
   assert.equal(template.includes('<view wx:if="{{item.body}}" class="planner-message-body">{{item.body}}</view>'), true);
   assert.equal(template.includes("{{item.attachmentName}}"), true);
   assert.equal(template.includes("关闭"), false);
   assert.equal(template.includes("planner-sheet-close-icon"), false);
   assert.equal(template.includes("planner-sheet-close"), false);
+  assert.equal(template.includes("status-banner"), false);
 });
 
 test("home page styles preserve multi-line assistant message bodies", async () => {
@@ -168,10 +173,15 @@ test("home page styles preserve multi-line assistant message bodies", async () =
   assert.equal(styles.includes("word-break: break-word;"), true);
   assert.equal(styles.includes(".planner-message-user_input"), true);
   assert.equal(styles.includes(".planner-message-assistant_message"), true);
+  assert.equal(styles.includes(".planner-toast"), true);
+  assert.equal(styles.includes(".planner-mask-open"), true);
+  assert.equal(styles.includes(".planner-sheet-open"), true);
+  assert.equal(styles.includes(".planner-sheet-closing"), true);
   assert.equal(styles.includes(".planner-tab-item-primary"), true);
   assert.equal(styles.includes(".planner-composer-shell"), true);
   assert.equal(styles.includes(".planner-input-shell"), true);
   assert.equal(styles.includes(".planner-input-shell-ready"), true);
+  assert.equal(styles.includes(".planner-launch"), true);
   assert.equal(styles.includes(".planner-send-inline"), true);
   assert.equal(styles.includes(".planner-send-inline-button"), true);
   assert.equal(styles.includes(".planner-send-inline-label"), true);

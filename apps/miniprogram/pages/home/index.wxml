@@ -1,13 +1,9 @@
 <view class="page">
+  <view wx:if="{{toastVisible}}" class="planner-toast planner-toast-{{toastTone}}">
+    <text>{{toastMessage}}</text>
+  </view>
+
   <view class="workspace">
-    <view wx:if="{{error}}" class="status-banner status-banner-error">
-      <text>{{error}}</text>
-    </view>
-
-    <view wx:if="{{notice && !sheetOpen}}" class="status-banner status-banner-notice">
-      <text>{{notice}}</text>
-    </view>
-
     <view class="workspace-card">
       <view class="tab-strip">
         <view
@@ -168,8 +164,15 @@
     </view>
   </view>
 
-  <view wx:if="{{sheetOpen}}" class="planner-mask" bindtap="onCloseArrange"></view>
-  <view wx:if="{{sheetOpen}}" class="planner-sheet">
+  <view
+    wx:if="{{sheetVisible}}"
+    class="planner-mask {{sheetAnimationState === 'open' ? 'planner-mask-open' : ''}} {{sheetAnimationState === 'closing' ? 'planner-mask-closing' : ''}}"
+    bindtap="onCloseArrange"
+  ></view>
+  <view
+    wx:if="{{sheetVisible}}"
+    class="planner-sheet {{sheetAnimationState === 'open' ? 'planner-sheet-open' : ''}} {{sheetAnimationState === 'closing' ? 'planner-sheet-closing' : ''}}"
+  >
     <view class="planner-sheet-surface">
       <view
         class="planner-sheet-handle"

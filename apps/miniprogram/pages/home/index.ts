@@ -402,6 +402,11 @@ registerHomePage();
 
 type RegisteredHomePage = {
   setData(data: Record<string, unknown>): void;
+  data?: Record<string, unknown>;
+  _toastTimer?: ReturnType<typeof setTimeout> | null;
+  _lastToastKey?: string | null;
+  _sheetAnimationTimer?: ReturnType<typeof setTimeout> | null;
+  _sheetAnimationFrameTimer?: ReturnType<typeof setTimeout> | null;
 };
 
 function buildRegisteredPageData(runtime: ReturnType<typeof createHomePageRuntime>) {
@@ -413,9 +418,11 @@ function buildRegisteredPageData(runtime: ReturnType<typeof createHomePageRuntim
     scheduleEmptyState: runtime.state.home.scheduleView.emptyState,
     kanbanEmptyState: runtime.state.home.kanbanView.subtitle,
     loading: runtime.state.loading,
-    error: runtime.state.error,
-    notice: runtime.state.notice,
-    sheetOpen: runtime.state.sheetOpen,
+    toastVisible: false,
+    toastMessage: "",
+    toastTone: "notice",
+    sheetVisible: false,
+    sheetAnimationState: "closed",
     arrangeTab: runtime.state.arrangeTab,
     attachmentPickerOpen: runtime.state.attachmentPickerOpen,
     draftText: runtime.state.draftText,
@@ -428,15 +435,113 @@ function buildRegisteredPageData(runtime: ReturnType<typeof createHomePageRuntim
   };
 }
 
+function clearToastTimer(page: RegisteredHomePage) {
+  if (page._toastTimer) {
+    clearTimeout(page._toastTimer);
+    page._toastTimer = null;
+  }
+}
+
+function clearSheetAnimationTimers(page: RegisteredHomePage) {
+  if (page._sheetAnimationTimer) {
+    clearTimeout(page._sheetAnimationTimer);
+    page._sheetAnimationTimer = null;
+  }
+
+  if (page._sheetAnimationFrameTimer) {
+    clearTimeout(page._sheetAnimationFrameTimer);
+    page._sheetAnimationFrameTimer = null;
+  }
+}
+
+function syncToastFromRuntime(page: RegisteredHomePage, runtime: ReturnType<typeof createHomePageRuntime>) {
+  const message = runtime.state.error ?? runtime.state.notice;
+  const tone = runtime.state.error ? "error" : "notice";
+  if (!message) {
+    return;
+  }
+
+  const toastKey = `${tone}:${message}`;
+  if (page._lastToastKey === toastKey) {
+    runtime.clearFeedback();
+    return;
+  }
+
+  page._lastToastKey = toastKey;
+  clearToastTimer(page);
+  page.setData({
+    toastVisible: true,
+    toastMessage: message,
+    toastTone: tone,
+  });
+  runtime.clearFeedback();
+  page._toastTimer = setTimeout(() => {
+    page.setData({
+      toastVisible: false,
+      toastMessage: "",
+    });
+    page._toastTimer = null;
+    page._lastToastKey = null;
+  }, 3000);
+}
+
 function syncRuntimeToPage(page: RegisteredHomePage, runtime: ReturnType<typeof createHomePageRuntime>) {
-  const currentData = (page as RegisteredHomePage & { data?: Record<string, unknown> }).data ?? {};
+  const currentData = page.data ?? {};
   page.setData({
     ...buildRegisteredPageData(runtime),
+    toastVisible: currentData.toastVisible ?? false,
+    toastMessage: currentData.toastMessage ?? "",
+    toastTone: currentData.toastTone ?? "notice",
+    sheetVisible: currentData.sheetVisible ?? false,
+    sheetAnimationState: currentData.sheetAnimationState ?? "closed",
     timelineScrollLeft:
       typeof currentData.timelineScrollLeft === "number"
         ? currentData.timelineScrollLeft
         : runtime.state.home.timelineView.initialScrollLeftPx,
   });
+  syncToastFromRuntime(page, runtime);
+  syncSheetPresentationFromRuntime(page, runtime);
+}
+
+function syncSheetPresentationFromRuntime(page: RegisteredHomePage, runtime: ReturnType<typeof createHomePageRuntime>) {
+  const currentData = page.data ?? {};
+  const isVisible = Boolean(currentData.sheetVisible);
+  const currentAnimationState = String(currentData.sheetAnimationState ?? "closed");
+
+  if (runtime.state.sheetOpen) {
+    if (isVisible && currentAnimationState === "open") {
+      return;
+    }
+
+    clearSheetAnimationTimers(page);
+    page.setData({
+      sheetVisible: true,
+      sheetAnimationState: "enter",
+    });
+    page._sheetAnimationFrameTimer = setTimeout(() => {
+      page.setData({
+        sheetAnimationState: "open",
+      });
+      page._sheetAnimationFrameTimer = null;
+    }, 16);
+    return;
+  }
+
+  if (!isVisible || currentAnimationState === "closing" || currentAnimationState === "closed") {
+    return;
+  }
+
+  clearSheetAnimationTimers(page);
+  page.setData({
+    sheetAnimationState: "closing",
+  });
+  page._sheetAnimationTimer = setTimeout(() => {
+    page.setData({
+      sheetVisible: false,
+      sheetAnimationState: "closed",
+    });
+    page._sheetAnimationTimer = null;
+  }, 260);
 }
 
 function syncTimelineViewport(page: RegisteredHomePage, runtime: ReturnType<typeof createHomePageRuntime>) {
@@ -474,6 +579,10 @@ function registerHomePage() {
 
   maybePage.Page({
     data: buildRegisteredPageData(runtime),
+    _toastTimer: null,
+    _lastToastKey: null,
+    _sheetAnimationTimer: null,
+    _sheetAnimationFrameTimer: null,
     _arrangeHandleTouchStartY: 0,
     _arrangeHandleDragging: false,
     onLoad() {

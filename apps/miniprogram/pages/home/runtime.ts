@@ -75,6 +75,7 @@ export interface HomePageRuntimeOptions {
 
 export interface HomePageRuntime {
   state: HomePageRuntimeState;
+  clearFeedback(): void;
   setDraftText(value: string): void;
   setAnswerText(value: string): void;
   setRuntimeApiBaseUrlDraft(value: string): void;
@@ -416,6 +417,10 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
 
   return {
     state,
+    clearFeedback() {
+      state.error = null;
+      state.notice = null;
+    },
     setDraftText(value: string) {
       state.draftText = value;
     },

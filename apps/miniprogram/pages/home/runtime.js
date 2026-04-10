@@ -311,6 +311,10 @@ export function createHomePageRuntime(options = {}) {
 
   return {
     state,
+    clearFeedback() {
+      state.error = null;
+      state.notice = null;
+    },
     setDraftText(value) {
       state.draftText = value;
     },
