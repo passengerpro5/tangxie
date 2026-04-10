@@ -40,7 +40,14 @@ export interface ArrangeSheetTab {
 
 export interface ArrangeThreadItem {
   id: string;
-  kind: "hero" | "user_input" | "extracted_attachment" | "system_question" | "ready" | "confirmed";
+  kind:
+    | "hero"
+    | "user_input"
+    | "assistant_message"
+    | "extracted_attachment"
+    | "system_question"
+    | "ready"
+    | "confirmed";
   title: string;
   body?: string;
   accent?: string;

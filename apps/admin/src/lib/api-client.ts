@@ -14,7 +14,7 @@ export interface ProviderPayload {
 
 export interface ModelBindingPayload {
   providerId: string;
-  scene: "task_extract" | "clarification" | "priority_rank" | "schedule_generate" | "reminder_copy";
+  scene: "task_extract" | "clarification" | "priority_rank" | "schedule_generate" | "reminder_copy" | "arrange_chat";
   modelName: string;
   temperature?: number;
   maxTokens?: number;
@@ -24,7 +24,7 @@ export interface ModelBindingPayload {
 }
 
 export interface PromptTemplatePayload {
-  scene: "task_extract" | "clarification" | "priority_rank" | "schedule_generate" | "reminder_copy";
+  scene: "task_extract" | "clarification" | "priority_rank" | "schedule_generate" | "reminder_copy" | "arrange_chat";
   templateName: string;
   systemPrompt: string;
   developerPrompt?: string | null;
@@ -75,6 +75,12 @@ export function createAdminApiClient(options: AdminApiClientOptions) {
         body: JSON.stringify(payload),
       });
     },
+    updateProvider(providerId: string, payload: Partial<ProviderPayload>) {
+      return requestJson(fetchImpl, joinUrl(options.baseUrl, `/admin/ai/providers/${providerId}`), {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+    },
     listModelBindings() {
       return requestJson(fetchImpl, joinUrl(options.baseUrl, "/admin/ai/models"));
     },
@@ -90,6 +96,12 @@ export function createAdminApiClient(options: AdminApiClientOptions) {
     createPromptTemplate(payload: PromptTemplatePayload) {
       return requestJson(fetchImpl, joinUrl(options.baseUrl, "/admin/ai/prompts"), {
         method: "POST",
+        body: JSON.stringify(payload),
+      });
+    },
+    updatePromptTemplate(promptId: string, payload: Partial<PromptTemplatePayload>) {
+      return requestJson(fetchImpl, joinUrl(options.baseUrl, `/admin/ai/prompts/${promptId}`), {
+        method: "PATCH",
         body: JSON.stringify(payload),
       });
     },

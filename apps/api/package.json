@@ -24,10 +24,13 @@
     "test:gateway": "node --experimental-strip-types --test test/ai-gateway.service.spec.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.41",
     "@embedded-postgres/darwin-arm64": "^18.3.0-beta.16",
     "@prisma/client": "^6.16.2",
+    "ai": "^6.0.154",
     "embedded-postgres": "^16.13.0-beta.16",
     "pg": "^8.16.3",
-    "prisma": "^6.16.2"
+    "prisma": "^6.16.2",
+    "zod": "^4.3.6"
   }
 }

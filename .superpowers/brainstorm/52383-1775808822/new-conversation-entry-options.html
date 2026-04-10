@@ -1,0 +1,138 @@
+<h2>“新建会话”入口方案</h2>
+<p class="subtitle">目标：在“安排任务”页里随时可新开会话，不打断输入主链路，也不挤压“安排”发送动作。</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. 标题行右侧文字按钮</div>
+        <div class="mockup-body">
+          <div style="padding: 12px 10px 6px; border-bottom: 1px solid #e8ebf0; display:flex; align-items:flex-end; justify-content:space-between;">
+            <div style="display:flex; gap:14px; align-items:flex-end;">
+              <div style="font-size:22px; font-weight:800; border-bottom:3px solid #2563eb; padding-bottom:6px;">安排任务</div>
+              <div style="font-size:16px; color:#8b93a1; padding-bottom:8px;">历史记录</div>
+            </div>
+            <div style="font-size:14px; font-weight:700; color:#2563eb; padding-bottom:8px;">+ 新会话</div>
+          </div>
+          <div style="padding: 16px; color:#4b5563;">聊天内容区域</div>
+          <div style="border-top:1px solid #e8ebf0; padding: 14px 16px; display:flex; gap:10px; align-items:center;">
+            <div class="mock-input" style="flex:1;">补充 deadline、时长或开始时间</div>
+            <button class="mock-button">安排</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 A</h3>
+      <p>入口放在顶部 tab 行右侧，最符合“当前会话级操作”的语义，也不会和附件加号混淆。</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>优点</h4>
+          <ul>
+            <li>看起来像“切换/管理会话”的一部分</li>
+            <li>不会误解成“上传附件”或“发送”</li>
+            <li>视觉权重可控，容易做轻</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>缺点</h4>
+          <ul>
+            <li>需要重新整理顶部横向空间</li>
+            <li>如果文案过长，窄屏会偏挤</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. 对话区顶部胶囊按钮</div>
+        <div class="mockup-body">
+          <div style="padding: 12px 10px 6px; border-bottom: 1px solid #e8ebf0; display:flex; gap:14px;">
+            <div style="font-size:22px; font-weight:800; border-bottom:3px solid #2563eb; padding-bottom:6px;">安排任务</div>
+            <div style="font-size:16px; color:#8b93a1; padding-bottom:8px;">历史记录</div>
+          </div>
+          <div style="padding: 12px 16px 4px;">
+            <div style="display:inline-flex; padding:8px 12px; border-radius:999px; background:#eef4ff; color:#2563eb; font-size:14px; font-weight:700;">+ 新建会话</div>
+          </div>
+          <div style="padding: 12px 16px; color:#4b5563;">聊天内容区域</div>
+          <div style="border-top:1px solid #e8ebf0; padding: 14px 16px; display:flex; gap:10px; align-items:center;">
+            <div class="mock-input" style="flex:1;">补充 deadline、时长或开始时间</div>
+            <button class="mock-button">安排</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 B</h3>
+      <p>入口放在线程区域顶部，和消息内容同层，用户进来后第一眼就能看到。</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>优点</h4>
+          <ul>
+            <li>很显眼，发现成本最低</li>
+            <li>不影响顶部 tab 的现有节奏</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>缺点</h4>
+          <ul>
+            <li>会侵占首屏消息空间</li>
+            <li>像“会话内容的一部分”，语义没那么干净</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C. 输入框右上角小图标</div>
+        <div class="mockup-body">
+          <div style="padding: 12px 10px 6px; border-bottom: 1px solid #e8ebf0; display:flex; gap:14px;">
+            <div style="font-size:22px; font-weight:800; border-bottom:3px solid #2563eb; padding-bottom:6px;">安排任务</div>
+            <div style="font-size:16px; color:#8b93a1; padding-bottom:8px;">历史记录</div>
+          </div>
+          <div style="padding: 16px; color:#4b5563;">聊天内容区域</div>
+          <div style="border-top:1px solid #e8ebf0; padding: 10px 16px 14px;">
+            <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+              <div style="font-size:13px; color:#6b7280; font-weight:700;">新会话</div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <div class="mock-input" style="flex:1;">补充 deadline、时长或开始时间</div>
+              <button class="mock-button">安排</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 C</h3>
+      <p>入口贴近输入区，强调“换个话题重新开始”。</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>优点</h4>
+          <ul>
+            <li>操作路径短</li>
+            <li>和发送动作同区域，临场切换快</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>缺点</h4>
+          <ul>
+            <li>容易和附件加号、发送按钮形成竞争</li>
+            <li>输入区已经比较满，再加入口会更挤</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>推荐</h3>
+  <p>我推荐 <strong>方案 A</strong>。它最符合“当前会话管理”的语义，位置稳定，不会破坏你已经打磨过的输入区，也最不容易和附件入口产生歧义。</p>
+</div>

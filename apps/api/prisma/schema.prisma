@@ -53,12 +53,18 @@ enum AIScene {
   priority_rank
   schedule_generate
   reminder_copy
+  arrange_chat
 }
 
 enum ClarificationSessionStatus {
   active
   resolved
   closed
+}
+
+enum ArrangeConversationStatus {
+  active
+  confirmed
 }
 
 model Task {
@@ -220,6 +226,33 @@ model PromptTemplate {
 
   @@unique([scene, version])
   @@index([scene, isActive])
+}
+
+model ArrangeConversation {
+  id            String                    @id @default(cuid())
+  title         String
+  summary       String?
+  status        ArrangeConversationStatus @default(active)
+  snapshot      Json
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  lastMessageAt DateTime                  @default(now())
+
+  messages      ArrangeConversationMessage[]
+
+  @@index([lastMessageAt])
+}
+
+model ArrangeConversationMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  createdAt      DateTime @default(now())
+
+  conversation ArrangeConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }
 
 model AiCallLog {

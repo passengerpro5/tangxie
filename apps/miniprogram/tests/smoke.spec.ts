@@ -114,29 +114,70 @@ test("home page template binds runtime data and interaction handlers for WeChat 
   assert.equal(template.includes('bindtap="onOpenArrange"'), true);
 
   assert.equal(template.includes('wx:if="{{sheetOpen}}"'), true);
+  assert.equal(template.includes('class="planner-sheet-title"'), false);
+  assert.equal(template.includes('bindtouchstart="onArrangeHandleTouchStart"'), true);
+  assert.equal(template.includes('bindtouchmove="onArrangeHandleTouchMove"'), true);
+  assert.equal(template.includes('bindtouchend="onArrangeHandleTouchEnd"'), true);
   assert.equal(template.includes('bindinput="onDraftInput"'), true);
   assert.equal(template.includes('bindinput="onAnswerInput"'), true);
   assert.equal(template.includes('bindtap="onOpenAttachmentPicker"'), true);
   assert.equal(template.includes('bindtap="onSelectAttachmentAction"'), true);
+  assert.equal(template.includes('bindtap="onStartNewArrangeConversation"'), true);
   assert.equal(template.includes('bindtap="onSwitchArrangeTab"'), true);
+  assert.equal(template.includes('bindtap="onOpenArrangeConversation"'), true);
+  assert.equal(template.includes("新会话"), true);
   assert.equal(template.includes('data-arrange-tab="{{tab.id}}"'), true);
+  assert.equal(template.includes('data-conversation-id="{{entry.id}}"'), true);
   assert.equal(template.includes('bindtap="onSubmitDraft"'), true);
   assert.equal(template.includes('bindtap="onSubmitClarification"'), true);
   assert.equal(template.includes('bindtap="onProposeSchedule"'), true);
+  assert.equal(template.includes('class="planner-composer-shell"'), true);
+  assert.equal(template.includes("planner-input-shell-ready"), true);
+  assert.equal(template.includes('class="planner-tool planner-tool-add planner-tool-inline"'), true);
+  assert.equal(template.includes('class="planner-send-inline"'), true);
+  assert.equal(template.includes("稍等"), true);
+  assert.equal(template.includes('class="planner-attachment-menu"'), true);
+  assert.equal(template.includes('class="planner-attachment-action-icon"'), true);
+  assert.equal(template.includes('class="planner-attachment-action-text"'), true);
+  assert.equal(template.includes('class="planner-runtime-config"'), false);
+  assert.equal(template.includes('bindinput="onRuntimeApiBaseUrlInput"'), false);
+  assert.equal(template.includes('bindtap="onSaveRuntimeApiBaseUrl"'), false);
+  assert.equal(template.includes("当前 API"), false);
   assert.equal(template.includes('wx:for="{{home.arrangeSheet.threadItems}}"'), true);
   assert.equal(template.includes('wx:for="{{home.arrangeSheet.tabs}}"'), true);
   assert.equal(template.includes('wx:if="{{arrangeTab === \'history\'}}"'), true);
   assert.equal(template.includes('wx:if="{{arrangeTab === \'arrange\'}}"'), true);
   assert.equal(template.includes('class="planner-message planner-message-{{item.kind}}"'), true);
+  assert.equal(template.includes('<text wx:if="{{item.kind !== \'user_input\'}}" class="planner-message-title">{{item.title}}</text>'), true);
   assert.equal(template.includes('wx:if="{{attachmentPickerOpen && arrangeTab === \'arrange\'}}"'), true);
 
   assert.equal(template.includes("{{loading}}"), true);
   assert.equal(template.includes("{{error}}"), true);
   assert.equal(template.includes("{{notice}}"), true);
-  assert.equal(template.includes("{{item.body}}"), true);
+  assert.equal(template.includes('<view wx:if="{{item.body}}" class="planner-message-body">{{item.body}}</view>'), true);
   assert.equal(template.includes("{{item.attachmentName}}"), true);
   assert.equal(template.includes("关闭"), false);
-  assert.equal(template.includes("planner-sheet-close-icon"), true);
+  assert.equal(template.includes("planner-sheet-close-icon"), false);
+  assert.equal(template.includes("planner-sheet-close"), false);
+});
+
+test("home page styles preserve multi-line assistant message bodies", async () => {
+  const styles = await readFile(new URL("../pages/home/index.wxss", import.meta.url), "utf8");
+
+  assert.equal(styles.includes("white-space: pre-wrap;"), true);
+  assert.equal(styles.includes("word-break: break-word;"), true);
+  assert.equal(styles.includes(".planner-message-user_input"), true);
+  assert.equal(styles.includes(".planner-message-assistant_message"), true);
+  assert.equal(styles.includes(".planner-tab-item-primary"), true);
+  assert.equal(styles.includes(".planner-composer-shell"), true);
+  assert.equal(styles.includes(".planner-input-shell"), true);
+  assert.equal(styles.includes(".planner-input-shell-ready"), true);
+  assert.equal(styles.includes(".planner-send-inline"), true);
+  assert.equal(styles.includes(".planner-send-inline-button"), true);
+  assert.equal(styles.includes(".planner-send-inline-label"), true);
+  assert.equal(styles.includes(".planner-tool-inline"), true);
+  assert.equal(styles.includes(".planner-attachment-menu"), true);
+  assert.equal(styles.includes(".planner-attachment-action-icon"), true);
 });
 
 test("devtools runtime has executable js entry files for app and declared pages", async () => {

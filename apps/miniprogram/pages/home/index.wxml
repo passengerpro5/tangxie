@@ -171,34 +171,43 @@
   <view wx:if="{{sheetOpen}}" class="planner-mask" bindtap="onCloseArrange"></view>
   <view wx:if="{{sheetOpen}}" class="planner-sheet">
     <view class="planner-sheet-surface">
-      <view class="planner-sheet-handle"></view>
-
-      <view class="planner-sheet-head">
-        <view class="planner-sheet-heading">
-          <text class="planner-sheet-title">{{home.arrangeSheet.title}}</text>
-        </view>
-        <view class="planner-sheet-close" bindtap="onCloseArrange">
-          <text class="planner-sheet-close-icon">×</text>
-        </view>
-      </view>
+      <view
+        class="planner-sheet-handle"
+        bindtouchstart="onArrangeHandleTouchStart"
+        bindtouchmove="onArrangeHandleTouchMove"
+        bindtouchend="onArrangeHandleTouchEnd"
+      ></view>
 
       <view class="planner-tab-strip">
-        <view
-          wx:for="{{home.arrangeSheet.tabs}}"
-          wx:for-item="tab"
-          wx:key="id"
-          class="planner-tab-item {{arrangeTab === tab.id ? 'planner-tab-item-active' : ''}}"
-          data-arrange-tab="{{tab.id}}"
-          bindtap="onSwitchArrangeTab"
-        >
-          <text>{{tab.label}}</text>
+        <view class="planner-tab-group">
+          <view
+            wx:for="{{home.arrangeSheet.tabs}}"
+            wx:for-item="tab"
+            wx:key="id"
+            class="planner-tab-item {{tab.id === 'arrange' ? 'planner-tab-item-primary' : 'planner-tab-item-secondary'}} {{arrangeTab === tab.id ? 'planner-tab-item-active' : ''}}"
+            data-arrange-tab="{{tab.id}}"
+            bindtap="onSwitchArrangeTab"
+          >
+            <text>{{tab.label}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{arrangeTab === 'arrange'}}" class="planner-new-conversation" bindtap="onStartNewArrangeConversation">
+          <text class="planner-new-conversation-text">+ 新会话</text>
         </view>
       </view>
 
       <scroll-view class="planner-thread" scroll-y="true" show-scrollbar="false">
         <view wx:if="{{arrangeTab === 'history'}}" class="planner-thread-section">
           <text class="planner-thread-kicker">历史记录</text>
-          <view wx:for="{{home.arrangeSheet.history}}" wx:for-item="entry" wx:key="id" class="planner-history-card">
+          <view
+            wx:for="{{home.arrangeSheet.history}}"
+            wx:for-item="entry"
+            wx:key="id"
+            class="planner-history-card"
+            data-conversation-id="{{entry.id}}"
+            bindtap="onOpenArrangeConversation"
+          >
             <view class="planner-history-head">
               <text class="planner-history-title">{{entry.title}}</text>
               <text class="planner-history-time">{{entry.updatedAt}}</text>
@@ -214,31 +223,38 @@
             wx:key="id"
             class="planner-message planner-message-{{item.kind}}"
           >
-            <text class="planner-message-title">{{item.title}}</text>
+            <text wx:if="{{item.kind !== 'user_input'}}" class="planner-message-title">{{item.title}}</text>
             <text wx:if="{{item.attachmentName}}" class="planner-message-attachment">{{item.attachmentName}}</text>
-            <text wx:if="{{item.body}}" class="planner-message-body">{{item.body}}</text>
+            <view wx:if="{{item.body}}" class="planner-message-body">{{item.body}}</view>
           </view>
 
           <view wx:if="{{loading}}" class="planner-message planner-message-system">
             <text class="planner-message-title">糖蟹正在处理</text>
-            <text class="planner-message-body">正在和排期服务同步...</text>
+            <view class="planner-message-body">正在和排期服务同步...</view>
           </view>
         </view>
       </scroll-view>
 
       <view wx:if="{{attachmentPickerOpen && arrangeTab === 'arrange'}}" class="planner-attachment-actions">
-        <view
-          wx:for="{{home.arrangeSheet.attachmentActions}}"
-          wx:for-item="action"
-          wx:key="id"
-          class="planner-attachment-action"
-          data-attachment-kind="{{action.kind}}"
-          bindtap="onSelectAttachmentAction"
-        >
-          <text class="planner-attachment-action-label">{{action.label}}</text>
-        </view>
-        <view class="planner-attachment-action planner-attachment-action-cancel" bindtap="onCloseAttachmentPicker">
-          <text class="planner-attachment-action-label">取消</text>
+        <view class="planner-attachment-menu">
+          <view
+            wx:for="{{home.arrangeSheet.attachmentActions}}"
+            wx:for-item="action"
+            wx:key="id"
+            class="planner-attachment-action"
+            data-attachment-kind="{{action.kind}}"
+            bindtap="onSelectAttachmentAction"
+          >
+            <text class="planner-attachment-action-icon">
+              {{action.kind === 'doc' ? '▤' : action.kind === 'image' ? '▣' : '≡'}}
+            </text>
+            <text class="planner-attachment-action-text">{{action.label}}</text>
+          </view>
+
+          <view class="planner-attachment-action planner-attachment-action-cancel" bindtap="onCloseAttachmentPicker">
+            <text class="planner-attachment-action-icon">×</text>
+            <text class="planner-attachment-action-text">取消</text>
+          </view>
         </view>
       </view>
 
@@ -249,62 +265,62 @@
           </view>
         </view>
 
-        <view class="planner-composer-row">
-          <view class="planner-tool planner-tool-add" bindtap="onOpenAttachmentPicker">
-            <text class="planner-tool-mark">+</text>
+        <view class="planner-composer-shell">
+          <view class="planner-input-shell {{stage === 'ready_to_schedule' ? 'planner-input-shell-ready' : ''}}">
+            <view class="planner-tool planner-tool-add planner-tool-inline" bindtap="onOpenAttachmentPicker">
+              <text class="planner-tool-mark">+</text>
+            </view>
+
+            <textarea
+              wx:if="{{stage === 'idle'}}"
+              class="planner-input"
+              value="{{draftText}}"
+              placeholder="{{home.arrangeSheet.inputPlaceholder}}"
+              bindinput="onDraftInput"
+              maxlength="-1"
+              auto-height
+            />
+
+            <input
+              wx:if="{{stage === 'clarifying'}}"
+              class="planner-input planner-input-answer"
+              value="{{answerText}}"
+              placeholder="补充 deadline、时长或开始时间"
+              bindinput="onAnswerInput"
+            />
+
+            <view wx:if="{{stage === 'ready_to_schedule'}}" class="planner-ready-copy">
+              <text>信息已经足够，点击右侧按钮确认排期。</text>
+            </view>
+
+            <view wx:if="{{stage === 'idle' || stage === 'clarifying'}}" class="planner-send-inline">
+              <button
+                wx:if="{{stage === 'idle'}}"
+                class="planner-send-inline-button"
+                loading="{{loading}}"
+                disabled="{{loading}}"
+                bindtap="onSubmitDraft"
+              >
+                ↑
+              </button>
+
+              <button
+                wx:if="{{stage === 'clarifying'}}"
+                class="planner-send-inline-button"
+                loading="{{loading}}"
+                disabled="{{loading}}"
+                bindtap="onSubmitClarification"
+              >
+                ↑
+              </button>
+            </view>
+
+            <view wx:if="{{stage === 'ready_to_schedule'}}" class="planner-send-inline">
+              <view class="planner-send-inline-label" bindtap="onProposeSchedule">
+                <text>稍等</text>
+              </view>
+            </view>
           </view>
-
-          <textarea
-            wx:if="{{stage === 'idle'}}"
-            class="planner-input"
-            value="{{draftText}}"
-            placeholder="{{home.arrangeSheet.inputPlaceholder}}"
-            bindinput="onDraftInput"
-            maxlength="-1"
-            auto-height
-          />
-
-          <input
-            wx:if="{{stage === 'clarifying'}}"
-            class="planner-input planner-input-answer"
-            value="{{answerText}}"
-            placeholder="补充 deadline、时长或开始时间"
-            bindinput="onAnswerInput"
-          />
-
-          <view wx:if="{{stage === 'ready_to_schedule'}}" class="planner-ready-copy">
-            <text>信息已经足够，点击右侧按钮确认排期。</text>
-          </view>
-
-          <button
-            wx:if="{{stage === 'idle'}}"
-            class="planner-send"
-            loading="{{loading}}"
-            disabled="{{loading}}"
-            bindtap="onSubmitDraft"
-          >
-            {{home.arrangeSheet.primaryActionText}}
-          </button>
-
-          <button
-            wx:if="{{stage === 'clarifying'}}"
-            class="planner-send"
-            loading="{{loading}}"
-            disabled="{{loading}}"
-            bindtap="onSubmitClarification"
-          >
-            {{home.arrangeSheet.primaryActionText}}
-          </button>
-
-          <button
-            wx:if="{{stage === 'ready_to_schedule'}}"
-            class="planner-send"
-            loading="{{loading}}"
-            disabled="{{loading}}"
-            bindtap="onProposeSchedule"
-          >
-            {{home.arrangeSheet.primaryActionText}}
-          </button>
         </view>
       </view>
     </view>

@@ -67,6 +67,19 @@ npm test
 
 By default the browser app calls `http://127.0.0.1:3000`. To point the console at a different API, start Vite with `VITE_ADMIN_API_BASE_URL` set to the desired backend origin.
 
+Recommended first-run arrange-chat setup:
+
+1. Open `服务商配置` and create or update:
+   - `name`: `AiHubMix`
+   - `providerType`: `openai_compatible`
+   - `baseUrl`: `https://api.aihubmix.com/v1`
+   - `defaultModel`: your chosen chat model
+2. Open `模型配置` and create a default binding for `scene = arrange_chat`.
+3. Open `提示词管理` and edit the active `arrange_chat` template so the assistant returns:
+   - a natural-language reply for the user
+   - a structured snapshot containing task summary, task list, and proposed blocks
+4. Run `连通性测试` before switching to the mini program.
+
 ### Mini Program Workflow
 
 `apps/miniprogram` now includes a WeChat `App/Page` runtime path for the arrange flow instead of only model-level shell code.
@@ -100,9 +113,19 @@ Local API behavior:
 Expected local flow in DevTools:
 
 1. Open the home page and tap `安排任务`.
-2. Enter task text and submit to trigger intake.
-3. If the backend asks follow-up questions, answer them in the sheet.
-4. Confirm the proposed schedule and let the page refresh the home timeline.
+2. The sheet should create a new arrange conversation automatically.
+3. Enter task text and submit to send a chat turn.
+4. Switch to `历史记录` and confirm earlier conversations can be reopened.
+5. Confirm the proposed schedule and let the page refresh the home timeline.
+
+If the arrange-chat flow is enabled correctly, the mini program should use:
+
+- `/arrange/conversations`
+- `/arrange/conversations/:id`
+- `/arrange/conversations/:id/messages`
+- `/arrange/conversations/:id/confirm`
+
+The older staged intake/clarification flow still exists as a fallback and for attachment-oriented tests, but it is no longer the preferred path for `安排任务`.
 
 ### Local Prisma Workflow
 
@@ -140,6 +163,7 @@ Notes:
 - The embedded database writes temporary state under `apps/api/.local/`.
 - In restricted environments, starting the local database or running DB-backed tests may require execution outside the sandbox.
 - `createAppHandler()` uses Prisma for `admin-ai` when `DATABASE_URL` is present, and falls back to in-memory storage otherwise.
+- `ArrangeConversation` and `ArrangeConversationMessage` have been added to the Prisma schema; if you switch from in-memory mode to DB-backed mode, run the Prisma push/generate workflow first.
 - The new admin React shell uses the same `/admin/ai/*` endpoints and can run against either the in-memory or Prisma-backed API path.
 
 ### Layout

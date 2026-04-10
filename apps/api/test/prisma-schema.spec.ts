@@ -15,6 +15,8 @@ test("contains the core Prisma models", () => {
     "model AIProviderConfig",
     "model AIModelBinding",
     "model PromptTemplate",
+    "model ArrangeConversation",
+    "model ArrangeConversationMessage",
     "model AiCallLog",
     "model AdminAiAuditLog",
   ];
@@ -34,11 +36,16 @@ test("contains the core enums", () => {
     "enum ReminderType",
     "enum AIScene",
     "enum ClarificationSessionStatus",
+    "enum ArrangeConversationStatus",
   ];
 
   for (const enumName of expectedEnums) {
     assert.ok(schema.includes(enumName), `missing ${enumName}`);
   }
+});
+
+test("AIScene enum includes arrange_chat for persisted admin/model configuration", () => {
+  assert.ok(schema.includes("arrange_chat"), "missing AIScene.arrange_chat");
 });
 
 test("contains datasource and generator declarations", () => {

@@ -5,6 +5,7 @@ import { getActivePage, type AdminShell } from "../App.ts";
 import type { AdminPageModel } from "../pages/providers-page.ts";
 import type { AdminConsoleState } from "../runtime/admin-console.ts";
 import type { createAdminConsoleController } from "../runtime/admin-console.ts";
+import { formDataToRecord } from "./form-data.ts";
 import { Layout } from "./layout.tsx";
 import { PagePanel } from "./page-panel.tsx";
 
@@ -64,6 +65,79 @@ function createEmptyRecord(page: AdminPageModel) {
   return Object.fromEntries(page.fields.map((field) => [field, ""]));
 }
 
+function withPageDefaults(page: AdminPageModel, defaults: Record<string, string>) {
+  if (page.id === "providers") {
+    return {
+      ...defaults,
+      name: defaults.name || "AiHubMix",
+      providerType: defaults.providerType || "openai_compatible",
+      baseUrl: defaults.baseUrl || "https://api.aihubmix.com/v1",
+      defaultModel: defaults.defaultModel || "gpt-4o-mini",
+    };
+  }
+
+  if (page.id === "models") {
+    return {
+      ...defaults,
+      scene: defaults.scene || "arrange_chat",
+      modelName: defaults.modelName || "gpt-4o-mini",
+      temperature: defaults.temperature || "0.2",
+      maxTokens: defaults.maxTokens || "4096",
+      timeoutSeconds: defaults.timeoutSeconds || "60",
+    };
+  }
+
+  if (page.id === "prompts") {
+    return {
+      ...defaults,
+      scene: defaults.scene || "arrange_chat",
+      templateName: defaults.templateName || "arrange-chat-v1",
+      systemPrompt:
+        defaults.systemPrompt ||
+        "你是糖蟹的任务安排助手。你需要通过多轮对话理解任务、补齐关键信息、拆分子任务，并给出可执行的时间安排。",
+      developerPrompt:
+        defaults.developerPrompt ||
+        "优先返回自然语言回复，并尽量保持输出可被前端解析为结构化安排结果。",
+      version: defaults.version || "v1",
+    };
+  }
+
+  return defaults;
+}
+
+function getFieldOptions(
+  field: string,
+  pageId: AdminPageModel["id"],
+  providers: Record<string, unknown>[],
+) {
+  if (field === "providerType") {
+    return [
+      { value: "openai_compatible", label: "OpenAI Compatible" },
+      { value: "custom", label: "Custom" },
+    ];
+  }
+
+  if (field === "scene") {
+    return [
+      { value: "arrange_chat", label: "arrange_chat" },
+      { value: "task_extract", label: "task_extract" },
+      { value: "clarification", label: "clarification" },
+      { value: "priority_rank", label: "priority_rank" },
+      { value: "schedule_generate", label: "schedule_generate" },
+      { value: "reminder_copy", label: "reminder_copy" },
+    ];
+  }
+
+  if (field === "providerId" && pageId === "models" && providers.length > 0) {
+    return providers.map((provider) => ({
+      value: String(provider.id ?? ""),
+      label: `${String(provider.name ?? "Unknown")} (${String(provider.id ?? "")})`,
+    }));
+  }
+
+  return null;
+}
+
 function getPageItems(state: AdminConsoleState, pageId: AdminPageModel["id"]) {
   if (pageId === "providers") return state.providers.items;
   if (pageId === "models") return state.models.items;
@@ -83,7 +157,7 @@ export function AdminShellApp(props: {
     void props.controller.loadPage(state.pageId);
   }, [props.controller, state.pageId]);
 
-  const form = createEmptyRecord(activePage);
+  const form = withPageDefaults(activePage, createEmptyRecord(activePage));
 
   return (
     <Layout
@@ -165,6 +239,8 @@ export function AdminShellApp(props: {
           defaults={form}
           controller={props.controller}
           providers={state.providers.items}
+          items={items}
+          lastProviderTest={state.lastProviderTest}
         />
       }
     />
@@ -176,6 +252,8 @@ function Inspector(props: {
   defaults: Record<string, string>;
   controller: AdminConsoleController;
   providers: Record<string, unknown>[];
+  items: Record<string, unknown>[];
+  lastProviderTest: unknown;
 }) {
   if (props.activePage.id === "logs") {
     return (
@@ -189,9 +267,23 @@ function Inspector(props: {
     <>
       <ActionForm
         key={props.activePage.id}
-        title={props.activePage.primaryAction}
+        title={props.activePage.id === "prompts" && props.items[0] ? "编辑当前提示词" : props.activePage.primaryAction}
         fields={props.activePage.fields}
-        defaults={props.defaults}
+        defaults={
+          props.activePage.id === "prompts" && props.items[0]
+            ? withPageDefaults(props.activePage, {
+                ...props.defaults,
+                id: String(props.items[0].id ?? ""),
+                scene: String(props.items[0].scene ?? ""),
+                templateName: String(props.items[0].templateName ?? ""),
+                systemPrompt: String(props.items[0].systemPrompt ?? ""),
+                developerPrompt: String(props.items[0].developerPrompt ?? ""),
+                version: String(props.items[0].version ?? ""),
+              })
+            : props.defaults
+        }
+        pageId={props.activePage.id}
+        providers={props.providers}
         onSubmit={async (values) => {
           if (props.activePage.id === "providers") {
             await props.controller.createProvider({
@@ -208,7 +300,7 @@ function Inspector(props: {
           if (props.activePage.id === "models") {
             await props.controller.createModelBinding({
               providerId: values.providerId,
-              scene: values.scene as "task_extract" | "clarification" | "priority_rank" | "schedule_generate" | "reminder_copy",
+              scene: values.scene as "task_extract" | "clarification" | "priority_rank" | "schedule_generate" | "reminder_copy" | "arrange_chat",
               modelName: values.modelName,
               temperature: values.temperature ? Number(values.temperature) : undefined,
               maxTokens: values.maxTokens ? Number(values.maxTokens) : undefined,
@@ -219,8 +311,20 @@ function Inspector(props: {
             return;
           }
 
+          if (values.id) {
+            await props.controller.updatePromptTemplate(values.id, {
+              scene: values.scene as "task_extract" | "clarification" | "priority_rank" | "schedule_generate" | "reminder_copy" | "arrange_chat",
+              templateName: values.templateName,
+              systemPrompt: values.systemPrompt,
+              developerPrompt: values.developerPrompt || undefined,
+              version: values.version,
+              isActive: true,
+            });
+            return;
+          }
+
           await props.controller.createPromptTemplate({
-            scene: values.scene as "task_extract" | "clarification" | "priority_rank" | "schedule_generate" | "reminder_copy",
+            scene: values.scene as "task_extract" | "clarification" | "priority_rank" | "schedule_generate" | "reminder_copy" | "arrange_chat",
             templateName: values.templateName,
             systemPrompt: values.systemPrompt,
             developerPrompt: values.developerPrompt || undefined,
@@ -230,6 +334,7 @@ function Inspector(props: {
         }}
       />
       <ProviderTestPanel controller={props.controller} providers={props.providers} />
+      <ProviderTestResult result={props.lastProviderTest} />
     </>
   );
 }
@@ -238,13 +343,12 @@ function ActionForm(props: {
   title: string;
   fields: string[];
   defaults: Record<string, string>;
+  pageId: AdminPageModel["id"];
+  providers: Record<string, unknown>[];
   onSubmit: (values: Record<string, string>) => Promise<void>;
 }) {
   async function submit(formData: FormData) {
-    const values = Object.fromEntries(formData.entries()).reduce<Record<string, string>>((acc, [key, value]) => {
-      acc[key] = String(value);
-      return acc;
-    }, {});
+    const values = formDataToRecord(formData);
     await props.onSubmit(values);
   }
 
@@ -257,10 +361,19 @@ function ActionForm(props: {
           await submit(new FormData(event.currentTarget));
         }}
       >
+        {"id" in props.defaults ? <input type="hidden" name="id" value={props.defaults.id} /> : null}
         {props.fields.map((field) => (
           <label key={field} className="field">
             <span>{fieldLabel(field)}</span>
-            {field.includes("Prompt") ? (
+            {getFieldOptions(field, props.pageId, props.providers) ? (
+              <select defaultValue={props.defaults[field]} name={field}>
+                {getFieldOptions(field, props.pageId, props.providers)?.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : field.includes("Prompt") ? (
               <textarea defaultValue={props.defaults[field]} name={field} rows={4} />
             ) : (
               <input defaultValue={props.defaults[field]} name={field} placeholder={fieldLabel(field)} />
@@ -279,6 +392,17 @@ function ProviderTestPanel(props: {
   controller: AdminConsoleController;
   providers: Record<string, unknown>[];
 }) {
+  if (props.providers.length === 0) {
+    return (
+      <PagePanel title="连通性测试" description="选中服务商后会触发 `/admin/ai/providers/:id/test`。">
+        <p className="inspector-copy">当前还没有可测试的服务商。请先在“服务商配置”里创建一个 AiHubMix provider，再回来测试。</p>
+        <button className="secondary-button" type="button" disabled>
+          先创建服务商
+        </button>
+      </PagePanel>
+    );
+  }
+
   return (
     <PagePanel title="连通性测试" description="选中服务商后会触发 `/admin/ai/providers/:id/test`。">
       <form
@@ -309,6 +433,26 @@ function ProviderTestPanel(props: {
           测试 Provider
         </button>
       </form>
+    </PagePanel>
+  );
+}
+
+function ProviderTestResult(props: { result: unknown }) {
+  if (!props.result || typeof props.result !== "object") {
+    return null;
+  }
+
+  const result = props.result as Record<string, unknown>;
+  const provider =
+    result.provider && typeof result.provider === "object"
+      ? (result.provider as Record<string, unknown>)
+      : null;
+
+  return (
+    <PagePanel title="最近一次测试结果" description="保留当前页并展示最新一次 provider 测试摘要。">
+      <p className="inspector-copy">服务商：{formatValue(provider?.name)}</p>
+      <p className="inspector-copy">模型：{formatValue(result.modelName)}</p>
+      <p className="inspector-copy">输出：{formatValue(result.outputText)}</p>
     </PagePanel>
   );
 }

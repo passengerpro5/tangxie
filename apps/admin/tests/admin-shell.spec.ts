@@ -33,6 +33,9 @@ test("page models stay aligned with the admin API boundaries", () => {
   assert.equal(createProvidersPage().primaryAction, "新增服务商");
   assert.equal(createModelsPage().fields.includes("scene"), true);
   assert.equal(createPromptsPage().fields.includes("version"), true);
+  assert.equal(createProvidersPage().description.includes("base URL"), true);
+  assert.equal(createModelsPage().description.includes("场景"), true);
+  assert.equal(createPromptsPage().description.includes("系统提示词"), true);
   assert.equal(createLogsPage().primaryAction, "刷新日志");
 });
 
@@ -67,15 +70,22 @@ test("admin api client routes requests to the expected endpoints", async () => {
   await client.listModelBindings();
   await client.createModelBinding({
     providerId: "provider_1",
-    scene: "clarification",
+    scene: "arrange_chat",
     modelName: "gpt-4o-mini",
   });
   await client.listPromptTemplates();
   await client.createPromptTemplate({
-    scene: "clarification",
-    templateName: "clarification-v1",
-    systemPrompt: "You are a task assistant.",
+    scene: "arrange_chat",
+    templateName: "arrange-chat-v1",
+    systemPrompt: "You are a task arranging assistant.",
     version: "v1",
+  });
+  await client.updatePromptTemplate("prompt_1", {
+    scene: "arrange_chat",
+    templateName: "arrange-chat-v1",
+    systemPrompt: "You are a task arranging assistant.",
+    developerPrompt: "Return useful plan suggestions.",
+    version: "v2",
   });
   await client.listLogs();
   await client.testProvider("provider_1", "hello");
@@ -89,22 +99,29 @@ test("admin api client routes requests to the expected endpoints", async () => {
       ["POST", "https://admin.api.test/admin/ai/models"],
       ["GET", "https://admin.api.test/admin/ai/prompts"],
       ["POST", "https://admin.api.test/admin/ai/prompts"],
+      ["PATCH", "https://admin.api.test/admin/ai/prompts/prompt_1"],
       ["GET", "https://admin.api.test/admin/ai/logs"],
       ["POST", "https://admin.api.test/admin/ai/providers/provider_1/test"],
     ],
   );
   assert.equal(calls[1]?.body?.includes('"providerType":"openai_compatible"'), true);
-  assert.equal(calls[7]?.body?.includes('"input":"hello"'), true);
+  assert.equal(calls[3]?.body?.includes('"scene":"arrange_chat"'), true);
+  assert.equal(calls[6]?.body?.includes('"version":"v2"'), true);
+  assert.equal(calls[8]?.body?.includes('"input":"hello"'), true);
 });
 
 test("admin runtime exposes browser scripts and bootstrap entry", async () => {
   const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
   const htmlEntry = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const browserEntry = await readFile(new URL("../src/main.tsx", import.meta.url), "utf8");
+  const shellApp = await readFile(new URL("../src/ui/admin-shell-app.tsx", import.meta.url), "utf8");
 
   assert.equal(typeof packageJson.scripts.dev, "string");
   assert.equal(typeof packageJson.scripts.build, "string");
   assert.equal(typeof packageJson.scripts.preview, "string");
   assert.equal(htmlEntry.includes('/src/main.tsx'), true);
   assert.equal(browserEntry.includes("bootstrapAdminBrowser"), true);
+  assert.equal(shellApp.includes("arrange_chat"), true);
+  assert.equal(shellApp.includes("api.aihubmix.com/v1"), true);
+  assert.equal(shellApp.includes("当前还没有可测试的服务商"), true);
 });

@@ -1,9 +1,14 @@
+import { Output, generateText, type FlexibleSchema, type ModelMessage } from "ai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { safeValidateTypes } from "@ai-sdk/provider-utils";
+
 export type AIScene =
   | "task_extract"
   | "clarification"
   | "priority_rank"
   | "schedule_generate"
-  | "reminder_copy";
+  | "reminder_copy"
+  | "arrange_chat";
 
 export interface AIMessage {
   role: "system" | "developer" | "user" | "assistant";
@@ -18,6 +23,11 @@ export interface OpenAICompatibleRequest {
   temperature?: number;
   maxTokens?: number;
   timeoutSeconds?: number;
+  structuredOutput?: {
+    schema: FlexibleSchema<unknown>;
+    name?: string;
+    description?: string;
+  };
 }
 
 export interface OpenAICompatibleResponse {
@@ -25,6 +35,7 @@ export interface OpenAICompatibleResponse {
   model: string;
   outputText: string;
   raw: unknown;
+  structuredOutput?: unknown;
 }
 
 export interface OpenAICompatibleProviderClient {
@@ -35,44 +46,77 @@ function joinUrl(baseUrl: string, path: string) {
   return `${baseUrl.replace(/\/$/, "")}${path}`;
 }
 
+function toModelMessages(messages: AIMessage[]): ModelMessage[] {
+  return messages.map((message) => {
+    if (message.role === "developer") {
+      return {
+        role: "system",
+        content: `[Developer]\n${message.content}`,
+      };
+    }
+
+    return {
+      role: message.role,
+      content: message.content,
+    };
+  });
+}
+
 export function createOpenAICompatibleProviderClient(
   fetchImpl: typeof fetch = fetch,
 ): OpenAICompatibleProviderClient {
   return {
     async chatCompletion(request) {
-      const response = await fetchImpl(joinUrl(request.baseUrl, "/chat/completions"), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${request.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: request.model,
-          messages: request.messages,
-          temperature: request.temperature,
-          max_tokens: request.maxTokens,
-        }),
+      const provider = createOpenAICompatible({
+        name: "openai-compatible",
+        baseURL: request.baseUrl,
+        apiKey: request.apiKey,
+        fetch: fetchImpl,
+        supportsStructuredOutputs: Boolean(request.structuredOutput),
       });
-
-      const raw = await response.json();
-      const outputText =
-        typeof raw === "object" &&
-        raw !== null &&
-        Array.isArray((raw as { choices?: unknown[] }).choices) &&
-        (raw as { choices: Array<{ message?: { content?: string } }> }).choices[0]?.message
-          ?.content
-          ? (raw as { choices: Array<{ message?: { content?: string } }> }).choices[0]!.message!
-              .content!
-          : "";
+      const result = await generateText({
+        model: provider.chatModel(request.model),
+        messages: toModelMessages(request.messages),
+        temperature: request.temperature,
+        maxOutputTokens: request.maxTokens,
+        abortSignal:
+          request.timeoutSeconds && request.timeoutSeconds > 0
+            ? AbortSignal.timeout(request.timeoutSeconds * 1000)
+            : undefined,
+        ...(request.structuredOutput
+          ? {
+              output: Output.object({
+                schema: request.structuredOutput.schema,
+                name: request.structuredOutput.name,
+                description: request.structuredOutput.description,
+              }),
+            }
+          : {}),
+      });
+      let structuredOutput: unknown;
+      if (request.structuredOutput) {
+        try {
+          structuredOutput = result.output;
+        } catch {
+          try {
+            const parsedJson = JSON.parse(result.text);
+            const validated = await safeValidateTypes({
+              value: parsedJson,
+              schema: request.structuredOutput.schema,
+            });
+            structuredOutput = validated.success ? validated.value : undefined;
+          } catch {
+            structuredOutput = undefined;
+          }
+        }
+      }
 
       return {
-        id:
-          typeof raw === "object" && raw !== null && "id" in raw
-            ? String((raw as { id?: unknown }).id ?? "")
-            : "",
+        id: result.response.id,
         model: request.model,
-        outputText,
-        raw,
+        outputText: result.text,
+        raw: result.response.body ?? result.response,
+        structuredOutput,
       };
     },
   };

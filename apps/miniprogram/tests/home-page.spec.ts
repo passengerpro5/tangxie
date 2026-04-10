@@ -181,6 +181,11 @@ test("mini program api client points to the backend route boundaries", async () 
   await client.confirmSchedule({ taskIds: ["task-1"] });
   await client.generateReminders();
   await client.getDailySummary("2026-04-08");
+  await client.createArrangeConversation();
+  await client.listArrangeConversations();
+  await client.getArrangeConversation("conv_1");
+  await client.sendArrangeConversationMessage("conv_1", { content: "周五前交论文初稿" });
+  await client.confirmArrangeConversation("conv_1");
 
   assert.deepEqual(
     calls.map((call) => [call.method, call.url]),
@@ -191,10 +196,16 @@ test("mini program api client points to the backend route boundaries", async () 
       ["POST", "https://api.tangxie.test/scheduling/confirm"],
       ["POST", "https://api.tangxie.test/reminders/generate"],
       ["GET", "https://api.tangxie.test/reminders/daily-summary?date=2026-04-08"],
+      ["POST", "https://api.tangxie.test/arrange/conversations"],
+      ["GET", "https://api.tangxie.test/arrange/conversations"],
+      ["GET", "https://api.tangxie.test/arrange/conversations/conv_1"],
+      ["POST", "https://api.tangxie.test/arrange/conversations/conv_1/messages"],
+      ["POST", "https://api.tangxie.test/arrange/conversations/conv_1/confirm"],
     ],
   );
   assert.equal(calls[0]?.body?.includes("论文初稿"), true);
   assert.equal(calls[1]?.body?.includes("session_1"), true);
+  assert.equal(calls[9]?.body?.includes("论文初稿"), true);
 });
 
 test("mini program app shell exposes the expected routes", () => {

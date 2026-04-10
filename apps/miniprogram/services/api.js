@@ -100,5 +100,31 @@ export function createMiniProgramApiClient(options) {
         method: "GET",
       });
     },
+    createArrangeConversation() {
+      return requestJson(fetchImpl, transport, options.baseUrl, "/arrange/conversations", {
+        method: "POST",
+      });
+    },
+    listArrangeConversations() {
+      return requestJson(fetchImpl, transport, options.baseUrl, "/arrange/conversations", {
+        method: "GET",
+      });
+    },
+    getArrangeConversation(conversationId) {
+      return requestJson(fetchImpl, transport, options.baseUrl, `/arrange/conversations/${conversationId}`, {
+        method: "GET",
+      });
+    },
+    sendArrangeConversationMessage(conversationId, payload) {
+      return requestJson(fetchImpl, transport, options.baseUrl, `/arrange/conversations/${conversationId}/messages`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    },
+    confirmArrangeConversation(conversationId) {
+      return requestJson(fetchImpl, transport, options.baseUrl, `/arrange/conversations/${conversationId}/confirm`, {
+        method: "POST",
+      });
+    },
   };
 }

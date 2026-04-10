@@ -306,6 +306,8 @@ function buildRegisteredPageData(runtime) {
     attachmentPickerOpen: runtime.state.attachmentPickerOpen,
     draftText: runtime.state.draftText,
     answerText: runtime.state.answerText,
+    runtimeApiBaseUrl: runtime.state.runtimeConfig.apiBaseUrl,
+    runtimeApiBaseUrlDraft: runtime.state.runtimeConfig.apiBaseUrlDraft,
     stage: runtime.state.stage,
     nextQuestion: runtime.state.nextQuestion,
     confirmedBlocks: runtime.state.confirmedBlocks,
@@ -332,6 +334,7 @@ function syncTimelineViewport(page, runtime) {
 
 async function runPageAction(page, runtime, action) {
   try {
+    syncRuntimeToPage(page, runtime);
     await action();
   } catch {
   } finally {
@@ -352,6 +355,8 @@ function registerHomePage() {
 
   globalThis.Page({
     data: buildRegisteredPageData(runtime),
+    _arrangeHandleTouchStartY: 0,
+    _arrangeHandleDragging: false,
     onLoad() {
       syncRuntimeToPage(this, runtime);
     },
@@ -372,13 +377,39 @@ function registerHomePage() {
       runtime.switchTab(tabId);
       syncRuntimeToPage(this, runtime);
     },
-    onOpenArrange() {
-      runtime.openArrangeSheet();
-      syncRuntimeToPage(this, runtime);
+    async onOpenArrange() {
+      await runPageAction(this, runtime, () => Promise.resolve(runtime.openArrangeSheet()));
     },
     onCloseArrange() {
       runtime.closeArrangeSheet();
       syncRuntimeToPage(this, runtime);
+    },
+    onArrangeHandleTouchStart(event) {
+      this._arrangeHandleTouchStartY = Number(event.touches?.[0]?.clientY ?? 0);
+      this._arrangeHandleDragging = true;
+    },
+    onArrangeHandleTouchMove(event) {
+      if (!this._arrangeHandleDragging) {
+        return;
+      }
+
+      const currentY = Number(event.touches?.[0]?.clientY ?? 0);
+      if (currentY < this._arrangeHandleTouchStartY) {
+        this._arrangeHandleTouchStartY = currentY;
+      }
+    },
+    onArrangeHandleTouchEnd(event) {
+      if (!this._arrangeHandleDragging) {
+        return;
+      }
+
+      const endY = Number(event.changedTouches?.[0]?.clientY ?? this._arrangeHandleTouchStartY);
+      const dragDistance = endY - this._arrangeHandleTouchStartY;
+      this._arrangeHandleDragging = false;
+      if (dragDistance >= 48) {
+        runtime.closeArrangeSheet();
+        syncRuntimeToPage(this, runtime);
+      }
     },
     onSwitchArrangeTab(event) {
       const arrangeTab = event.currentTarget?.dataset?.arrangeTab;
@@ -387,6 +418,16 @@ function registerHomePage() {
       }
       runtime.switchArrangeTab(arrangeTab);
       syncRuntimeToPage(this, runtime);
+    },
+    async onStartNewArrangeConversation() {
+      await runPageAction(this, runtime, () => runtime.startNewArrangeConversation());
+    },
+    async onOpenArrangeConversation(event) {
+      const conversationId = event.currentTarget?.dataset?.conversationId;
+      if (!conversationId) {
+        return;
+      }
+      await runPageAction(this, runtime, () => runtime.openArrangeConversation(conversationId));
     },
     onOpenAttachmentPicker() {
       runtime.openAttachmentPicker();
@@ -417,6 +458,14 @@ function registerHomePage() {
     },
     onAnswerInput(event) {
       runtime.setAnswerText(event.detail?.value ?? "");
+      syncRuntimeToPage(this, runtime);
+    },
+    onRuntimeApiBaseUrlInput(event) {
+      runtime.setRuntimeApiBaseUrlDraft(event.detail?.value ?? "");
+      syncRuntimeToPage(this, runtime);
+    },
+    onSaveRuntimeApiBaseUrl() {
+      runtime.saveRuntimeApiBaseUrl();
       syncRuntimeToPage(this, runtime);
     },
     onTimelineHorizontalScroll(event) {

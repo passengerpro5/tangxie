@@ -3,6 +3,48 @@ import type { MiniProgramTransport } from "./wechat-request.ts";
 export type TaskSourceType = "text" | "image" | "doc";
 export type ReminderType = "start" | "deadline" | "daily_summary";
 
+export interface ArrangeConversationTaskSnapshot {
+  title: string;
+  estimatedMinutes?: number;
+  priority?: string;
+}
+
+export interface ArrangeConversationBlockSnapshot {
+  id: string;
+  taskId: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  durationMinutes: number;
+  status: "proposed" | "confirmed";
+}
+
+export interface ArrangeConversationSnapshot {
+  title: string | null;
+  summary: string | null;
+  tasks: ArrangeConversationTaskSnapshot[];
+  proposedBlocks: ArrangeConversationBlockSnapshot[];
+  readyToConfirm: boolean;
+}
+
+export interface ArrangeConversationRecord {
+  id: string;
+  title: string;
+  summary: string | null;
+  status: "active" | "confirmed";
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string;
+}
+
+export interface ArrangeConversationMessageRecord {
+  id: string;
+  conversationId: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  createdAt: string;
+}
+
 export interface MiniProgramApiClientOptions {
   baseUrl: string;
   fetchImpl?: typeof fetch;
@@ -90,6 +132,25 @@ export interface ReminderSummaryResponse {
   startCount?: number;
   deadlineCount?: number;
   items: ReminderRecordResponse[];
+}
+
+export interface ArrangeConversationDetailResponse {
+  conversation: ArrangeConversationRecord;
+  messages: ArrangeConversationMessageRecord[];
+  snapshot: ArrangeConversationSnapshot;
+}
+
+export interface ArrangeConversationSendResponse {
+  conversation: ArrangeConversationRecord;
+  userMessage: ArrangeConversationMessageRecord;
+  assistantMessage: ArrangeConversationMessageRecord;
+  snapshot: ArrangeConversationSnapshot;
+}
+
+export interface ArrangeConversationConfirmResponse {
+  conversation: ArrangeConversationRecord;
+  snapshot: ArrangeConversationSnapshot;
+  confirmedBlocks: Array<ArrangeConversationBlockSnapshot & { status: "confirmed" }>;
 }
 
 function buildUrl(baseUrl: string, path: string) {
@@ -209,6 +270,62 @@ export function createMiniProgramApiClient(options: MiniProgramApiClientOptions)
         `/reminders/daily-summary${suffix}`,
         {
           method: "GET",
+        },
+      );
+    },
+    createArrangeConversation() {
+      return requestJson<ArrangeConversationDetailResponse>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        "/arrange/conversations",
+        {
+          method: "POST",
+        },
+      );
+    },
+    listArrangeConversations() {
+      return requestJson<{ items: ArrangeConversationRecord[] }>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        "/arrange/conversations",
+        {
+          method: "GET",
+        },
+      );
+    },
+    getArrangeConversation(conversationId: string) {
+      return requestJson<ArrangeConversationDetailResponse>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        `/arrange/conversations/${conversationId}`,
+        {
+          method: "GET",
+        },
+      );
+    },
+    sendArrangeConversationMessage(conversationId: string, payload: { content: string }) {
+      return requestJson<ArrangeConversationSendResponse>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        `/arrange/conversations/${conversationId}/messages`,
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+    },
+    confirmArrangeConversation(conversationId: string) {
+      return requestJson<ArrangeConversationConfirmResponse>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        `/arrange/conversations/${conversationId}/confirm`,
+        {
+          method: "POST",
         },
       );
     },

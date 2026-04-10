@@ -314,7 +314,6 @@
 .kanban-column-empty,
 .timeline-empty-copy,
 .planner-sheet-subtitle,
-.planner-message-body,
 .planner-message-attachment,
 .planner-history-summary,
 .planner-history-time,
@@ -326,6 +325,16 @@
   font-size: 23rpx;
   line-height: 1.45;
   color: #626b75;
+}
+
+.planner-message-body {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 23rpx;
+  line-height: 1.45;
+  color: #626b75;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .timeline-empty {
@@ -432,7 +441,7 @@
   bottom: 0;
   z-index: 30;
   height: 75vh;
-  padding: 0 10rpx 10rpx;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -449,61 +458,64 @@
 .planner-sheet-handle {
   width: 100rpx;
   height: 10rpx;
-  margin: 16rpx auto 0;
+  margin: 16rpx auto 10rpx;
   border-radius: 999rpx;
   background: rgba(20, 20, 20, 0.12);
 }
 
-.planner-sheet-head {
+.planner-tab-strip {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16rpx;
-  padding: 18rpx 24rpx 10rpx;
+  padding: 0 24rpx 14rpx;
 }
 
-.planner-sheet-heading {
-  flex: 1;
+.planner-tab-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 18rpx;
   min-width: 0;
 }
 
-.planner-sheet-title {
-  font-size: 30rpx;
-}
-
-.planner-sheet-close {
-  flex: none;
-  width: 52rpx;
-  height: 52rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9aa1ab;
-}
-
-.planner-sheet-close-icon {
-  font-size: 34rpx;
-  line-height: 1;
-}
-
-.planner-tab-strip {
-  display: flex;
-  gap: 20rpx;
-  padding: 0 24rpx 10rpx;
-}
-
 .planner-tab-item {
-  padding-bottom: 10rpx;
+  padding-bottom: 12rpx;
   border-bottom: 4rpx solid transparent;
-  font-size: 26rpx;
+  font-size: 24rpx;
   line-height: 1.2;
-  font-weight: 700;
+  font-weight: 600;
   color: #8a9099;
+}
+
+.planner-tab-item-primary {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #171717;
+}
+
+.planner-tab-item-secondary {
+  padding-top: 6rpx;
 }
 
 .planner-tab-item-active {
   color: #171717;
   border-bottom-color: #245ee8;
+}
+
+.planner-new-conversation {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52rpx;
+  padding: 0 4rpx 8rpx;
+}
+
+.planner-new-conversation-text {
+  font-size: 24rpx;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #245ee8;
 }
 
 .planner-thread {
@@ -554,9 +566,25 @@
   margin-right: 72rpx;
 }
 
-.planner-message-user {
-  margin-left: 72rpx;
-  background: rgba(224, 236, 255, 0.96);
+.planner-message-user_input {
+  align-self: flex-end;
+  max-width: 82%;
+  margin-left: 88rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 28rpx;
+  background: #edf2ff;
+  border: 1rpx solid rgba(36, 94, 232, 0.1);
+  box-shadow: 0 8rpx 20rpx rgba(36, 94, 232, 0.08);
+}
+
+.planner-message-assistant_message {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 6rpx 0 2rpx;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .planner-message-hero {
@@ -581,7 +609,30 @@
 }
 
 .planner-conversation {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
   padding-bottom: 8rpx;
+}
+
+.planner-message-user_input .planner-message-body {
+  margin-top: 0;
+  color: #171717;
+}
+
+.planner-message-assistant_message .planner-message-title {
+  margin-bottom: 6rpx;
+  font-size: 22rpx;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #6f7682;
+}
+
+.planner-message-assistant_message .planner-message-body {
+  margin-top: 0;
+  font-size: 31rpx;
+  line-height: 1.65;
+  color: #171717;
 }
 
 .planner-confirmed-row {
@@ -594,28 +645,55 @@
   padding: 16rpx 16rpx calc(18rpx + env(safe-area-inset-bottom));
   border-top: 1rpx solid rgba(20, 20, 20, 0.08);
   background: rgba(255, 255, 255, 0.98);
+  position: relative;
 }
 
 .planner-attachment-actions {
-  margin: 0 16rpx 12rpx;
+  position: absolute;
+  left: 20rpx;
+  bottom: calc(128rpx + env(safe-area-inset-bottom));
+  z-index: 5;
+}
+
+.planner-attachment-menu {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8rpx;
   padding: 10rpx;
   border-radius: 24rpx;
-  background: rgba(247, 248, 250, 0.98);
+  background: rgba(255, 255, 255, 0.98);
   border: 1rpx solid rgba(20, 20, 20, 0.06);
+  box-shadow: 0 12rpx 30rpx rgba(20, 20, 20, 0.1);
 }
 
 .planner-attachment-action {
-  padding: 18rpx 16rpx;
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  width: auto;
+  min-width: 0;
+  padding: 14rpx 16rpx;
   border-radius: 18rpx;
-  background: rgba(255, 255, 255, 0.98);
-}
-
-.planner-attachment-action + .planner-attachment-action {
-  margin-top: 8rpx;
+  background: rgba(247, 248, 250, 0.98);
 }
 
 .planner-attachment-action-cancel {
-  background: rgba(247, 248, 250, 0.98);
+  background: rgba(244, 245, 247, 0.98);
+}
+
+.planner-attachment-action-icon {
+  width: 28rpx;
+  text-align: center;
+  font-size: 22rpx;
+  line-height: 1;
+  color: #657189;
+}
+
+.planner-attachment-action-text {
+  font-size: 24rpx;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #171717;
 }
 
 .planner-attachments {
@@ -637,10 +715,26 @@
   line-height: 1.2;
 }
 
-.planner-composer-row {
+.planner-composer-shell {
+  display: block;
+}
+
+.planner-input-shell {
+  width: 100%;
+  min-height: 96rpx;
   display: flex;
   align-items: flex-end;
   gap: 12rpx;
+  padding: 10rpx 12rpx 10rpx 14rpx;
+  border-radius: 28rpx;
+  background: #f6f7fa;
+  border: 1rpx solid rgba(20, 20, 20, 0.08);
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.6);
+  box-sizing: border-box;
+}
+
+.planner-input-shell-ready {
+  align-items: center;
 }
 
 .planner-tool {
@@ -651,8 +745,12 @@
   align-items: center;
   justify-content: center;
   border-radius: 999rpx;
-  background: rgba(247, 248, 250, 0.98);
+  background: rgba(255, 255, 255, 0.9);
   border: 1rpx solid rgba(20, 20, 20, 0.08);
+}
+
+.planner-tool-inline {
+  margin-bottom: 2rpx;
 }
 
 .planner-tool-mark {
@@ -664,37 +762,123 @@
 .planner-input,
 .planner-ready-copy {
   flex: 1;
-  min-height: 88rpx;
-  padding: 18rpx 20rpx;
-  border-radius: 24rpx;
-  background: #f7f8fb;
-  border: 1rpx solid rgba(20, 20, 20, 0.08);
+  min-height: 76rpx;
+  padding: 16rpx 4rpx 16rpx 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
   box-sizing: border-box;
   font-size: 26rpx;
   color: #1f1f1f;
 }
 
 .planner-input-answer {
-  min-height: 88rpx;
+  min-height: 76rpx;
 }
 
 .planner-ready-copy {
   display: flex;
   align-items: center;
+  color: #7b818b;
 }
 
-.planner-send {
+.planner-send-inline {
   flex: none;
-  min-width: 124rpx;
-  height: 88rpx;
-  margin: 0;
-  padding: 0 24rpx;
-  border-radius: 24rpx;
-  background: #245ee8;
-  color: #fff;
-  font-size: 26rpx;
-  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.planner-send-inline-button {
+  width: 72rpx;
+  height: 72rpx;
+  min-width: 72rpx;
+  margin: 0;
+  padding: 0;
+  border-radius: 999rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(20, 20, 20, 0.08);
+  color: #1f1f1f;
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6rpx 18rpx rgba(20, 20, 20, 0.08);
+}
+
+.planner-send-inline-button::after {
+  border: 0;
+}
+
+.planner-send-inline-label {
+  min-width: 72rpx;
+  padding: 0 8rpx;
+  font-size: 24rpx;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #9aa1ab;
+  text-align: right;
+}
+
+.planner-runtime-config {
+  margin-top: 14rpx;
+  padding: 16rpx;
+  border-radius: 22rpx;
+  background: rgba(247, 248, 250, 0.92);
+  border: 1rpx solid rgba(20, 20, 20, 0.06);
+}
+
+.planner-runtime-config-kicker {
+  display: block;
+  font-size: 20rpx;
+  line-height: 1.2;
+  color: #7a8291;
+}
+
+.planner-runtime-config-value {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: #1f1f1f;
+  word-break: break-all;
+}
+
+.planner-runtime-config-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-top: 12rpx;
+}
+
+.planner-runtime-config-input {
+  flex: 1;
+  min-height: 72rpx;
+  padding: 0 18rpx;
+  border-radius: 18rpx;
+  background: #fff;
+  border: 1rpx solid rgba(20, 20, 20, 0.08);
+  box-sizing: border-box;
+  font-size: 24rpx;
+  color: #1f1f1f;
+}
+
+.planner-runtime-config-save {
+  min-width: 108rpx;
+  height: 72rpx;
+  padding: 0 18rpx;
+  border-radius: 18rpx;
+  background: #1f1f1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.planner-runtime-config-save-label {
+  font-size: 24rpx;
+  line-height: 1;
+  color: #fff;
+  font-weight: 700;
 }

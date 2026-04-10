@@ -420,6 +420,8 @@ function buildRegisteredPageData(runtime: ReturnType<typeof createHomePageRuntim
     attachmentPickerOpen: runtime.state.attachmentPickerOpen,
     draftText: runtime.state.draftText,
     answerText: runtime.state.answerText,
+    runtimeApiBaseUrl: runtime.state.runtimeConfig.apiBaseUrl,
+    runtimeApiBaseUrlDraft: runtime.state.runtimeConfig.apiBaseUrlDraft,
     stage: runtime.state.stage,
     nextQuestion: runtime.state.nextQuestion,
     confirmedBlocks: runtime.state.confirmedBlocks,
@@ -450,6 +452,7 @@ async function runPageAction(
   action: () => Promise<unknown>,
 ) {
   try {
+    syncRuntimeToPage(page, runtime);
     await action();
   } catch {
     // The runtime captures the user-facing error state; the page still needs a sync.
@@ -471,6 +474,8 @@ function registerHomePage() {
 
   maybePage.Page({
     data: buildRegisteredPageData(runtime),
+    _arrangeHandleTouchStartY: 0,
+    _arrangeHandleDragging: false,
     onLoad() {
       syncRuntimeToPage(this, runtime);
     },
@@ -491,13 +496,39 @@ function registerHomePage() {
       runtime.switchTab(tabId);
       syncRuntimeToPage(this, runtime);
     },
-    onOpenArrange() {
-      runtime.openArrangeSheet();
-      syncRuntimeToPage(this, runtime);
+    async onOpenArrange() {
+      await runPageAction(this, runtime, () => Promise.resolve(runtime.openArrangeSheet()));
     },
     onCloseArrange() {
       runtime.closeArrangeSheet();
       syncRuntimeToPage(this, runtime);
+    },
+    onArrangeHandleTouchStart(event: { touches?: Array<{ clientY?: number }> }) {
+      this._arrangeHandleTouchStartY = Number(event.touches?.[0]?.clientY ?? 0);
+      this._arrangeHandleDragging = true;
+    },
+    onArrangeHandleTouchMove(event: { touches?: Array<{ clientY?: number }> }) {
+      if (!this._arrangeHandleDragging) {
+        return;
+      }
+
+      const currentY = Number(event.touches?.[0]?.clientY ?? 0);
+      if (currentY < this._arrangeHandleTouchStartY) {
+        this._arrangeHandleTouchStartY = currentY;
+      }
+    },
+    onArrangeHandleTouchEnd(event: { changedTouches?: Array<{ clientY?: number }> }) {
+      if (!this._arrangeHandleDragging) {
+        return;
+      }
+
+      const endY = Number(event.changedTouches?.[0]?.clientY ?? this._arrangeHandleTouchStartY);
+      const dragDistance = endY - this._arrangeHandleTouchStartY;
+      this._arrangeHandleDragging = false;
+      if (dragDistance >= 48) {
+        runtime.closeArrangeSheet();
+        syncRuntimeToPage(this, runtime);
+      }
     },
     onSwitchArrangeTab(event: { currentTarget?: { dataset?: { arrangeTab?: "arrange" | "history" } } }) {
       const arrangeTab = event.currentTarget?.dataset?.arrangeTab;
@@ -506,6 +537,16 @@ function registerHomePage() {
       }
       runtime.switchArrangeTab(arrangeTab);
       syncRuntimeToPage(this, runtime);
+    },
+    async onStartNewArrangeConversation() {
+      await runPageAction(this, runtime, () => runtime.startNewArrangeConversation());
+    },
+    async onOpenArrangeConversation(event: { currentTarget?: { dataset?: { conversationId?: string } } }) {
+      const conversationId = event.currentTarget?.dataset?.conversationId;
+      if (!conversationId) {
+        return;
+      }
+      await runPageAction(this, runtime, () => runtime.openArrangeConversation(conversationId));
     },
     onOpenAttachmentPicker() {
       runtime.openAttachmentPicker();
@@ -536,6 +577,14 @@ function registerHomePage() {
     },
     onAnswerInput(event: { detail?: { value?: string } }) {
       runtime.setAnswerText(event.detail?.value ?? "");
+      syncRuntimeToPage(this, runtime);
+    },
+    onRuntimeApiBaseUrlInput(event: { detail?: { value?: string } }) {
+      runtime.setRuntimeApiBaseUrlDraft(event.detail?.value ?? "");
+      syncRuntimeToPage(this, runtime);
+    },
+    onSaveRuntimeApiBaseUrl() {
+      runtime.saveRuntimeApiBaseUrl();
       syncRuntimeToPage(this, runtime);
     },
     onTimelineHorizontalScroll(event: { detail?: { scrollLeft?: number } }) {
