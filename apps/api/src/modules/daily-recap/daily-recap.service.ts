@@ -3,6 +3,8 @@ import {
   type DailyRecapPendingChangeRecord,
   type DailyRecapPendingTaskRecord,
   type DailyRecapRecord,
+  type DailyRecapScorecardMetricRecord,
+  type DailyRecapScorecardRecord,
   type DailyRecapsRepository,
 } from "../../persistence/daily-recaps-repository.ts";
 import {
@@ -23,13 +25,20 @@ import { getPrismaClient } from "../../persistence/prisma-client.ts";
 import { SchedulingService } from "../scheduling/scheduling.service.ts";
 import { TasksService } from "../tasks/tasks.service.ts";
 
-export interface DailyRecapDraftResponse {
+export interface DailyRecapTodayResponse {
+  id: string;
   dateKey: string;
+  status: DailyRecapRecord["status"];
   tasks: Array<{
     taskId: string;
     completed: boolean;
   }>;
-  scorecard: null;
+  completedTaskIds: string[];
+  pendingTasks: DailyRecapPendingTaskRecord[];
+  pendingChanges: DailyRecapPendingChangeRecord[];
+  requiresScheduleConfirmation: boolean;
+  confirmedAt: string | null;
+  scorecard: DailyRecapScorecardPayload | null;
 }
 
 export interface DailyRecapReviewInput {
@@ -46,12 +55,13 @@ export interface DailyRecapReviewResponse {
     id: string;
     dateKey: string;
     status: DailyRecapRecord["status"];
-    tasks: DailyRecapDraftResponse["tasks"];
+    tasks: DailyRecapTodayResponse["tasks"];
     completedTaskIds: string[];
     pendingTasks: DailyRecapPendingTaskRecord[];
     pendingChanges: DailyRecapPendingChangeRecord[];
     requiresScheduleConfirmation: boolean;
-    scorecard: null;
+    confirmedAt: string | null;
+    scorecard: DailyRecapScorecardPayload | null;
   };
 }
 
@@ -60,27 +70,16 @@ export interface DailyRecapConfirmInput {
   acceptScheduleChanges: boolean;
 }
 
-export interface DailyRecapScorecardMetric {
-  id: "focus_time" | "streak_days" | "closure";
-  label: string;
-  value: string;
-}
+export type DailyRecapScorecardMetric = DailyRecapScorecardMetricRecord;
 
-export interface DailyRecapScorecardPayload {
-  title: string;
-  tags: [string, string, string];
-  metrics: DailyRecapScorecardMetric[];
-  summary: string;
-  shareTitle: string;
-  shareSubtitle: string;
-}
+export type DailyRecapScorecardPayload = DailyRecapScorecardRecord;
 
 export interface DailyRecapConfirmResponse {
   recap: {
     id: string;
     dateKey: string;
     status: "confirmed";
-    tasks: DailyRecapDraftResponse["tasks"];
+    tasks: DailyRecapTodayResponse["tasks"];
     completedTaskIds: string[];
     pendingTasks: DailyRecapPendingTaskRecord[];
     pendingChanges: DailyRecapPendingChangeRecord[];
@@ -199,18 +198,21 @@ function buildPendingChanges(pendingTasks: DailyRecapPendingTaskRecord[]) {
   });
 }
 
-function serializeDraft(recap: DailyRecapRecord): DailyRecapDraftResponse {
+function serializeScorecard(scorecard: DailyRecapRecord["scorecard"]) {
+  if (!scorecard) {
+    return null;
+  }
+
   return {
-    dateKey: recap.dateKey,
-    tasks: recap.tasks.map((task) => ({
-      taskId: task.taskId,
-      completed: task.completed,
+    ...scorecard,
+    tags: [...scorecard.tags],
+    metrics: scorecard.metrics.map((metric) => ({
+      ...metric,
     })),
-    scorecard: null,
   };
 }
 
-function serializeRecap(recap: DailyRecapRecord): DailyRecapReviewResponse["recap"] {
+function serializeToday(recap: DailyRecapRecord): DailyRecapTodayResponse {
   return {
     id: recap.id,
     dateKey: recap.dateKey,
@@ -227,7 +229,14 @@ function serializeRecap(recap: DailyRecapRecord): DailyRecapReviewResponse["reca
       ...change,
     })),
     requiresScheduleConfirmation: recap.requiresScheduleConfirmation,
-    scorecard: null,
+    confirmedAt: recap.confirmedAt ? recap.confirmedAt.toISOString() : null,
+    scorecard: serializeScorecard(recap.scorecard),
+  };
+}
+
+function serializeRecap(recap: DailyRecapRecord): DailyRecapReviewResponse["recap"] {
+  return {
+    ...serializeToday(recap),
   };
 }
 
@@ -359,7 +368,6 @@ export class DailyRecapService {
   private readonly repository: DailyRecapsRepository;
   private readonly tasksService: TasksService;
   private readonly schedulingService: SchedulingService;
-  private readonly confirmedDateKeys = new Set<string>();
 
   constructor(options: DailyRecapServiceOptions = {}) {
     this.clock = options.now ?? (() => new Date());
@@ -378,10 +386,10 @@ export class DailyRecapService {
     });
   }
 
-  async getToday(): Promise<DailyRecapDraftResponse> {
+  async getToday(): Promise<DailyRecapTodayResponse> {
     const dateKey = createShanghaiDateKey(this.clock());
-    const recap = await this.repository.ensureDraft(dateKey);
-    return serializeDraft(recap);
+    const recap = (await this.repository.findByDateKey(dateKey)) ?? (await this.repository.ensureDraft(dateKey));
+    return serializeToday(recap);
   }
 
   async reviewToday(input: DailyRecapReviewInput): Promise<DailyRecapReviewResponse> {
@@ -428,7 +436,7 @@ export class DailyRecapService {
       }),
     );
 
-    if (input.acceptScheduleChanges && !this.confirmedDateKeys.has(dateKey)) {
+    if (input.acceptScheduleChanges) {
       for (const pendingTask of recap.pendingTasks) {
         if (pendingTask.action === "keep") {
           continue;
@@ -450,7 +458,7 @@ export class DailyRecapService {
       }
     }
 
-    const streakDays = this.computeStreakCount(dateKey);
+    const streakDays = await this.computeStreakCount(dateKey);
     const scorecard = createScorecard({
       completedTasks: completedTasks.filter(isTaskRecord),
       pendingChanges: recap.pendingChanges,
@@ -458,7 +466,11 @@ export class DailyRecapService {
       acceptScheduleChanges: input.acceptScheduleChanges,
     });
 
-    this.confirmedDateKeys.add(dateKey);
+    const confirmedRecap = await this.repository.confirm(dateKey, {
+      streakCount: streakDays,
+      scorecard,
+      confirmedAt: this.clock(),
+    });
 
     const updatedTasks = (await Promise.all(
       completedTasks.filter(isTaskRecord).map(async (task) => this.tasksService.getTask(task.id)),
@@ -468,10 +480,10 @@ export class DailyRecapService {
 
     return {
       recap: {
-        ...serializeRecap(recap),
+        ...serializeRecap(confirmedRecap),
         status: "confirmed",
-        confirmedAt: this.clock().toISOString(),
-        scorecard,
+        confirmedAt: confirmedRecap.confirmedAt?.toISOString() ?? this.clock().toISOString(),
+        scorecard: serializeScorecard(confirmedRecap.scorecard) ?? scorecard,
       },
       updatedTasks: updatedTasks.map(serializeTask),
       updatedScheduleBlocks: updatedScheduleBlocks.map(serializeBlock),
@@ -479,11 +491,16 @@ export class DailyRecapService {
     };
   }
 
-  private computeStreakCount(dateKey: string) {
+  private async computeStreakCount(dateKey: string) {
+    const confirmed = await this.repository.listConfirmedBefore(dateKey);
     let streakDays = 1;
     let cursor = createPreviousShanghaiDateKey(dateKey);
 
-    while (this.confirmedDateKeys.has(cursor)) {
+    for (const recap of confirmed) {
+      if (recap.dateKey !== cursor) {
+        break;
+      }
+
       streakDays += 1;
       cursor = createPreviousShanghaiDateKey(cursor);
     }

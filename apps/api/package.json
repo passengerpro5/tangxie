@@ -17,6 +17,8 @@
     "test:admin-ai:db:local": "node scripts/with-local-db.mjs npm run test:admin-ai:db",
     "test:attachments": "node --experimental-strip-types --test test/attachments.e2e-spec.ts",
     "test:daily-recap": "node --experimental-strip-types --test test/daily-recap.e2e-spec.ts",
+    "test:daily-recap:db": "node --experimental-strip-types --test test/daily-recap-prisma.e2e-spec.ts",
+    "test:daily-recap:db:local": "node scripts/with-local-db.mjs npm run test:daily-recap:db",
     "test:reminders": "node --experimental-strip-types --test test/reminders.e2e-spec.ts",
     "test:scheduling": "node --experimental-strip-types --test test/scheduling.e2e-spec.ts",
     "test:persistence:db": "node scripts/run-db-persistence-tests.mjs",

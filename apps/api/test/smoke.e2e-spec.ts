@@ -48,6 +48,10 @@ test("api smoke covers the lifecycle surfaces", async () => {
   assert.equal(health.statusCode, 200);
   assert.deepEqual(health.body, { ok: true });
 
+  const dailyRecap = await invokeWithHandler(handler, "GET", "/daily-recaps/today");
+  assert.equal(dailyRecap.statusCode, 200);
+  assert.equal(typeof dailyRecap.body.dateKey, "string");
+
   const intake = await invokeWithHandler(handler, "POST", "/tasks/intake", {
     rawText: "周五前交论文初稿，预计 2 小时完成",
   });

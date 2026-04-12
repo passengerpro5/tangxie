@@ -1,4 +1,4 @@
-export type DailyRecapStatus = "draft" | "reviewed";
+export type DailyRecapStatus = "draft" | "reviewed" | "confirmed";
 
 export type DailyRecapTaskProgressState = "not_started" | "partial" | "almost_done";
 
@@ -25,6 +25,23 @@ export interface DailyRecapPendingChangeRecord {
   label: string;
 }
 
+export type DailyRecapScorecardMetricId = "focus_time" | "streak_days" | "closure";
+
+export interface DailyRecapScorecardMetricRecord {
+  id: DailyRecapScorecardMetricId;
+  label: string;
+  value: string;
+}
+
+export interface DailyRecapScorecardRecord {
+  title: string;
+  tags: string[];
+  metrics: DailyRecapScorecardMetricRecord[];
+  summary: string;
+  shareTitle: string;
+  shareSubtitle: string;
+}
+
 export interface DailyRecapRecord {
   id: string;
   dateKey: string;
@@ -34,7 +51,9 @@ export interface DailyRecapRecord {
   pendingTasks: DailyRecapPendingTaskRecord[];
   pendingChanges: DailyRecapPendingChangeRecord[];
   requiresScheduleConfirmation: boolean;
-  scorecard: null;
+  scorecard: DailyRecapScorecardRecord | null;
+  streakCount: number;
+  confirmedAt: Date | null;
   reviewedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -47,10 +66,18 @@ export interface DailyRecapReviewInput {
   requiresScheduleConfirmation: boolean;
 }
 
+export interface DailyRecapConfirmInput {
+  streakCount: number;
+  scorecard: DailyRecapScorecardRecord;
+  confirmedAt?: Date;
+}
+
 export interface DailyRecapsRepository {
   ensureDraft(dateKey: string): Promise<DailyRecapRecord>;
   findByDateKey(dateKey: string): Promise<DailyRecapRecord | null>;
   review(dateKey: string, input: DailyRecapReviewInput): Promise<DailyRecapRecord>;
+  confirm(dateKey: string, input: DailyRecapConfirmInput): Promise<DailyRecapRecord>;
+  listConfirmedBefore(dateKey: string): Promise<DailyRecapRecord[]>;
 }
 
 export interface InMemoryDailyRecapsRepositoryOptions {
@@ -83,6 +110,24 @@ function clonePendingChange(change: DailyRecapPendingChangeRecord): DailyRecapPe
   };
 }
 
+function cloneScorecardMetric(metric: DailyRecapScorecardMetricRecord): DailyRecapScorecardMetricRecord {
+  return {
+    ...metric,
+  };
+}
+
+function cloneScorecard(scorecard: DailyRecapScorecardRecord | null): DailyRecapScorecardRecord | null {
+  if (!scorecard) {
+    return null;
+  }
+
+  return {
+    ...scorecard,
+    tags: [...scorecard.tags],
+    metrics: scorecard.metrics.map(cloneScorecardMetric),
+  };
+}
+
 function cloneRecap(recap: DailyRecapRecord): DailyRecapRecord {
   return {
     ...recap,
@@ -90,6 +135,9 @@ function cloneRecap(recap: DailyRecapRecord): DailyRecapRecord {
     completedTaskIds: [...recap.completedTaskIds],
     pendingTasks: recap.pendingTasks.map(clonePendingTask),
     pendingChanges: recap.pendingChanges.map(clonePendingChange),
+    scorecard: cloneScorecard(recap.scorecard),
+    streakCount: recap.streakCount,
+    confirmedAt: recap.confirmedAt ? cloneDate(recap.confirmedAt) : null,
     reviewedAt: recap.reviewedAt ? cloneDate(recap.reviewedAt) : null,
     createdAt: cloneDate(recap.createdAt),
     updatedAt: cloneDate(recap.updatedAt),
@@ -142,6 +190,8 @@ export function createInMemoryDailyRecapsRepository(
         pendingChanges: [],
         requiresScheduleConfirmation: false,
         scorecard: null,
+        streakCount: 0,
+        confirmedAt: null,
         reviewedAt: null,
         createdAt: cloneDate(timestamp),
         updatedAt: cloneDate(timestamp),
@@ -155,9 +205,14 @@ export function createInMemoryDailyRecapsRepository(
       return recap ? cloneRecap(recap) : null;
     },
     async review(dateKey, input) {
+      const existing = recaps.get(dateKey);
+      if (existing?.status === "confirmed") {
+        return cloneRecap(existing);
+      }
+
       const timestamp = now();
       const recap: DailyRecapRecord = {
-        id: recaps.get(dateKey)?.id ?? createId("daily_recap", ++recapSeq),
+        id: existing?.id ?? createId("daily_recap", ++recapSeq),
         dateKey,
         status: "reviewed",
         tasks: buildTasksFromInput(input),
@@ -166,13 +221,44 @@ export function createInMemoryDailyRecapsRepository(
         pendingChanges: input.pendingChanges.map(clonePendingChange),
         requiresScheduleConfirmation: input.requiresScheduleConfirmation,
         scorecard: null,
+        streakCount: existing?.streakCount ?? 0,
+        confirmedAt: existing?.confirmedAt ? cloneDate(existing.confirmedAt) : null,
         reviewedAt: cloneDate(timestamp),
-        createdAt: recaps.get(dateKey)?.createdAt ? cloneDate(recaps.get(dateKey)!.createdAt) : cloneDate(timestamp),
+        createdAt: existing?.createdAt ? cloneDate(existing.createdAt) : cloneDate(timestamp),
         updatedAt: cloneDate(timestamp),
       };
 
       recaps.set(dateKey, recap);
       return cloneRecap(recap);
+    },
+    async confirm(dateKey, input) {
+      const existing = recaps.get(dateKey);
+      const timestamp = input.confirmedAt ? cloneDate(input.confirmedAt) : now();
+      const recap: DailyRecapRecord = {
+        id: existing?.id ?? createId("daily_recap", ++recapSeq),
+        dateKey,
+        status: "confirmed",
+        tasks: existing?.tasks.map(cloneTask) ?? [],
+        completedTaskIds: existing?.completedTaskIds ? [...existing.completedTaskIds] : [],
+        pendingTasks: existing?.pendingTasks.map(clonePendingTask) ?? [],
+        pendingChanges: existing?.pendingChanges.map(clonePendingChange) ?? [],
+        requiresScheduleConfirmation: existing?.requiresScheduleConfirmation ?? false,
+        scorecard: cloneScorecard(input.scorecard),
+        streakCount: input.streakCount,
+        confirmedAt: cloneDate(timestamp),
+        reviewedAt: existing?.reviewedAt ? cloneDate(existing.reviewedAt) : cloneDate(timestamp),
+        createdAt: existing?.createdAt ? cloneDate(existing.createdAt) : cloneDate(timestamp),
+        updatedAt: cloneDate(timestamp),
+      };
+
+      recaps.set(dateKey, recap);
+      return cloneRecap(recap);
+    },
+    async listConfirmedBefore(dateKey) {
+      return [...recaps.values()]
+        .filter((recap) => recap.status === "confirmed" && recap.dateKey < dateKey)
+        .sort((left, right) => right.dateKey.localeCompare(left.dateKey))
+        .map(cloneRecap);
     },
   };
 }

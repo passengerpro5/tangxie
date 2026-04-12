@@ -67,6 +67,12 @@ enum ArrangeConversationStatus {
   confirmed
 }
 
+enum DailyRecapStatus {
+  draft
+  reviewed
+  confirmed
+}
+
 model Task {
   id                     String                  @id @default(cuid())
   title                  String
@@ -253,6 +259,18 @@ model ArrangeConversationMessage {
   conversation ArrangeConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
+}
+
+model DailyRecap {
+  id          String           @id @default(cuid())
+  dateKey     String           @unique
+  status      DailyRecapStatus  @default(draft)
+  snapshot    Json
+  scorecard   Json?
+  streakCount Int              @default(0)
+  confirmedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }
 
 model AiCallLog {

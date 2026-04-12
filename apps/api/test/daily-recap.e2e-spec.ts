@@ -55,6 +55,7 @@ test("daily recap exposes today's review draft and accepts structured review inp
 
   const today = await invokeApp(handler, "GET", "/daily-recaps/today");
   assert.equal(today.statusCode, 200);
+  assert.equal(today.body.status, "draft");
   assert.equal(typeof today.body.dateKey, "string");
   assert.equal(Array.isArray(today.body.tasks), true);
   assert.equal(today.body.scorecard, null);
@@ -129,4 +130,10 @@ test("confirming a daily recap marks completed tasks done, applies schedule chan
     ),
     true,
   );
+
+  const today = await invokeApp(handler, "GET", "/daily-recaps/today");
+  assert.equal(today.statusCode, 200);
+  assert.equal(today.body.status, "confirmed");
+  assert.equal(today.body.confirmedAt !== null, true);
+  assert.equal(today.body.scorecard.title, confirmed.body.scorecard.title);
 });

@@ -17,6 +17,7 @@ test("contains the core Prisma models", () => {
     "model PromptTemplate",
     "model ArrangeConversation",
     "model ArrangeConversationMessage",
+    "model DailyRecap",
     "model AiCallLog",
     "model AdminAiAuditLog",
   ];
@@ -37,6 +38,7 @@ test("contains the core enums", () => {
     "enum AIScene",
     "enum ClarificationSessionStatus",
     "enum ArrangeConversationStatus",
+    "enum DailyRecapStatus",
   ];
 
   for (const enumName of expectedEnums) {

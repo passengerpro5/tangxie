@@ -14,6 +14,7 @@ import { createInMemoryAdminAiRepository } from "./persistence/admin-ai-reposito
 import type { AdminAiRepository } from "./persistence/admin-ai-repository.ts";
 import { createInMemoryArrangeConversationsRepository } from "./persistence/arrange-conversations-repository.ts";
 import { createInMemoryDailyRecapsRepository } from "./persistence/daily-recaps-repository.ts";
+import { PrismaDailyRecapsRepository } from "./persistence/prisma-daily-recaps-repository.ts";
 import { createInMemoryRemindersRepository } from "./persistence/reminders-repository.ts";
 import type { ArrangeConversationsRepository } from "./persistence/arrange-conversations-repository.ts";
 import { PrismaArrangeConversationsRepository } from "./persistence/prisma-arrange-conversations-repository.ts";
@@ -114,6 +115,10 @@ function createDefaultSchedulingRepository() {
 }
 
 function createDefaultDailyRecapRepository(options: AppModuleOptions = {}) {
+  if (process.env.DATABASE_URL) {
+    return new PrismaDailyRecapsRepository(getPrismaClient());
+  }
+
   return createInMemoryDailyRecapsRepository({
     now: options.now,
   });
