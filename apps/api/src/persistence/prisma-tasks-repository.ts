@@ -218,6 +218,27 @@ export class PrismaTasksRepository implements TasksRepository {
     return record ? toClarificationSessionRecord(record) : null;
   }
 
+  async updateTask(task: TaskRecord) {
+    const record = await this.prisma.task.update({
+      where: { id: task.id },
+      data: {
+        title: task.title,
+        description: task.description,
+        sourceType: task.sourceType,
+        status: task.status,
+        deadlineAt: task.deadlineAt,
+        estimatedDurationMinutes: task.estimatedDurationMinutes,
+        priorityScore: task.priorityScore,
+        priorityRank: task.priorityRank,
+        importanceReason: task.importanceReason,
+        createdByAI: task.createdByAI,
+        userConfirmed: task.userConfirmed,
+      },
+    });
+
+    return toTaskRecord(record);
+  }
+
   async updateTaskAndSession(input: {
     task: TaskRecord;
     clarificationSession: ClarificationSessionRecord;

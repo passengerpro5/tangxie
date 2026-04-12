@@ -97,6 +97,7 @@ export interface TasksRepository {
   listSessions(): Promise<ClarificationSessionRecord[]>;
   findTaskById(taskId: string): Promise<TaskRecord | null>;
   findSessionById(sessionId: string): Promise<ClarificationSessionRecord | null>;
+  updateTask(task: TaskRecord): Promise<TaskRecord>;
   updateTaskAndSession(input: {
     task: TaskRecord;
     clarificationSession: ClarificationSessionRecord;
@@ -109,6 +110,8 @@ export interface TasksRepository {
 export interface InMemoryTasksRepositoryOptions {
   now?: () => Date;
 }
+
+let currentInMemoryTasksRepository: TasksRepository | null = null;
 
 function createId(prefix: string, seed: number) {
   return `${prefix}_${seed.toString(36)}`;
@@ -164,7 +167,7 @@ export function createInMemoryTasksRepository(
   const sources: TaskInputSourceRecord[] = [];
   const sessions: ClarificationSessionRecord[] = [];
 
-  return {
+  const repository: TasksRepository = {
     async createTask(input) {
       const timestamp = now();
       const task: TaskRecord = {
@@ -228,6 +231,15 @@ export function createInMemoryTasksRepository(
       const session = sessions.find((item) => item.id === sessionId);
       return session ? cloneSession(session) : null;
     },
+    async updateTask(task) {
+      const taskIndex = tasks.findIndex((item) => item.id === task.id);
+      if (taskIndex < 0) {
+        throw new Error(`Task not found: ${task.id}`);
+      }
+
+      tasks[taskIndex] = cloneTask(task);
+      return cloneTask(tasks[taskIndex]);
+    },
     async updateTaskAndSession(input) {
       const taskIndex = tasks.findIndex((item) => item.id === input.task.id);
       const sessionIndex = sessions.findIndex((item) => item.id === input.clarificationSession.id);
@@ -245,4 +257,11 @@ export function createInMemoryTasksRepository(
       };
     },
   };
+
+  currentInMemoryTasksRepository = repository;
+  return repository;
+}
+
+export function getCurrentInMemoryTasksRepository() {
+  return currentInMemoryTasksRepository;
 }

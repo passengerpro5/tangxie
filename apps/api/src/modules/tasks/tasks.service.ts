@@ -376,6 +376,10 @@ export class TasksService {
     return this.repository.createTask(input);
   }
 
+  async updateTask(task: TaskRecord) {
+    return this.repository.updateTask(task);
+  }
+
   async listSessions() {
     return this.repository.listSessions();
   }

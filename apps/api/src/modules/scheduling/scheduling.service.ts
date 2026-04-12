@@ -106,6 +106,22 @@ export class SchedulingService {
     });
   }
 
+  async moveTaskBlockToTomorrow(taskId: string) {
+    return this.shiftConfirmedTaskBlock(taskId, 1);
+  }
+
+  async moveTaskBlockLaterThisWeek(taskId: string) {
+    return this.shiftConfirmedTaskBlock(taskId, 2);
+  }
+
+  async pauseTask(taskId: string) {
+    const block = await this.findConfirmedBlockForTask(taskId);
+    return this.repository.markConfirmedBlockMissed({
+      taskId,
+      blockId: block.id,
+    });
+  }
+
   private async confirmedBlocksAsBusyBlocks(): Promise<BusyBlockInput[]> {
     const blocks = await this.repository.listConfirmedBlocks();
     return blocks.map((block) => ({
@@ -121,5 +137,30 @@ export class SchedulingService {
     }
 
     return task;
+  }
+
+  private async findConfirmedBlockForTask(taskId: string) {
+    const confirmedBlocks = await this.repository.listConfirmedBlocks();
+    const block = confirmedBlocks.find((item) => item.taskId === taskId);
+    if (!block) {
+      throw new Error(`Confirmed schedule block not found: ${taskId}`);
+    }
+
+    return block;
+  }
+
+  private async shiftConfirmedTaskBlock(taskId: string, daysToAdd: number) {
+    const block = await this.findConfirmedBlockForTask(taskId);
+    const startAt = new Date(block.startAt.getTime());
+    const endAt = new Date(block.endAt.getTime());
+    startAt.setUTCDate(startAt.getUTCDate() + daysToAdd);
+    endAt.setUTCDate(endAt.getUTCDate() + daysToAdd);
+
+    return this.repository.updateConfirmedBlock({
+      taskId,
+      blockId: block.id,
+      startAt,
+      endAt,
+    });
   }
 }

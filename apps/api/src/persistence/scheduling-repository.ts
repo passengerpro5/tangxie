@@ -7,7 +7,7 @@ export interface ConfirmedBlockRecord {
   startAt: Date;
   endAt: Date;
   durationMinutes: number;
-  status: "confirmed";
+  status: "confirmed" | "missed";
 }
 
 export interface CreateConfirmedBlockInput {
@@ -29,6 +29,7 @@ export interface SchedulingRepository {
   listConfirmedBlocks(): Promise<ConfirmedBlockRecord[]>;
   createConfirmedBlocks(blocks: CreateConfirmedBlockInput[]): Promise<ConfirmedBlockRecord[]>;
   updateConfirmedBlock(input: UpdateConfirmedBlockInput): Promise<ConfirmedBlockRecord>;
+  markConfirmedBlockMissed(input: { taskId: string; blockId: string }): Promise<ConfirmedBlockRecord>;
 }
 
 function createId(prefix: string, seed: number) {
@@ -47,6 +48,8 @@ function cloneConfirmedBlock(block: ConfirmedBlockRecord): ConfirmedBlockRecord 
   };
 }
 
+let currentInMemorySchedulingRepository: SchedulingRepository | null = null;
+
 export function cloneSchedulingTask(task: SchedulingTaskInput): SchedulingTaskInput {
   return {
     ...task,
@@ -59,9 +62,9 @@ export function createInMemorySchedulingRepository(): SchedulingRepository {
   let blockSeq = 0;
   const confirmedBlocks: ConfirmedBlockRecord[] = [];
 
-  return {
+  const repository: SchedulingRepository = {
     async listConfirmedBlocks() {
-      return confirmedBlocks.map(cloneConfirmedBlock);
+      return confirmedBlocks.filter((block) => block.status === "confirmed").map(cloneConfirmedBlock);
     },
     async createConfirmedBlocks(blocks) {
       const created = blocks.map((block) => ({
@@ -98,5 +101,28 @@ export function createInMemorySchedulingRepository(): SchedulingRepository {
       confirmedBlocks[index] = updated;
       return cloneConfirmedBlock(updated);
     },
+    async markConfirmedBlockMissed(input) {
+      const index = confirmedBlocks.findIndex(
+        (block) => block.id === input.blockId && block.taskId === input.taskId,
+      );
+      if (index < 0) {
+        throw new Error(`Confirmed schedule block not found: ${input.blockId}`);
+      }
+
+      const updated: ConfirmedBlockRecord = {
+        ...confirmedBlocks[index],
+        status: "missed",
+      };
+
+      confirmedBlocks[index] = updated;
+      return cloneConfirmedBlock(updated);
+    },
   };
+
+  currentInMemorySchedulingRepository = repository;
+  return repository;
+}
+
+export function getCurrentInMemorySchedulingRepository() {
+  return currentInMemorySchedulingRepository;
 }

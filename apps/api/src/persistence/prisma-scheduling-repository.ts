@@ -15,7 +15,7 @@ function toConfirmedBlockRecord(record: {
   taskId: string;
   startAt: Date;
   endAt: Date;
-  status: "confirmed";
+  status: "confirmed" | "missed";
   task: {
     title: string;
   };
@@ -150,6 +150,48 @@ export class PrismaSchedulingRepository implements SchedulingRepository {
       return toConfirmedBlockRecord({
         ...updated,
         status: "confirmed",
+      });
+    });
+  }
+
+  async markConfirmedBlockMissed(input: { taskId: string; blockId: string }) {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.scheduleBlock.findFirst({
+        where: {
+          id: input.blockId,
+          taskId: input.taskId,
+          status: "confirmed",
+        },
+        include: {
+          task: {
+            select: {
+              title: true,
+            },
+          },
+        },
+      });
+
+      if (!existing) {
+        throw new Error(`Confirmed schedule block not found: ${input.blockId}`);
+      }
+
+      const updated = await tx.scheduleBlock.update({
+        where: { id: input.blockId },
+        data: {
+          status: "missed",
+        },
+        include: {
+          task: {
+            select: {
+              title: true,
+            },
+          },
+        },
+      });
+
+      return toConfirmedBlockRecord({
+        ...updated,
+        status: "missed",
       });
     });
   }
