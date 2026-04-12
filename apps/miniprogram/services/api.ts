@@ -194,6 +194,86 @@ export interface UpdateTaskScheduleBlockPayload {
   endAt: string;
 }
 
+export interface DailyRecapMetric {
+  id: string;
+  label: string;
+  value: string;
+}
+
+export interface DailyRecapScorecardResponse {
+  title: string;
+  tags: string[];
+  metrics: DailyRecapMetric[];
+  summary: string;
+  shareTitle: string;
+  shareSubtitle: string;
+}
+
+export interface DailyRecapTaskState {
+  taskId: string;
+  completed: boolean;
+}
+
+export interface DailyRecapPendingTaskPayload {
+  taskId: string;
+  progressState: "not_started" | "partial" | "almost_done";
+  action: "keep" | "move_tomorrow" | "move_later_this_week" | "pause";
+}
+
+export interface DailyRecapPendingChangeResponse {
+  taskId: string;
+  kind: "move_block" | "pause_task";
+  label: string;
+}
+
+export interface DailyRecapReviewPayload {
+  completedTaskIds: string[];
+  pendingTasks: DailyRecapPendingTaskPayload[];
+}
+
+export interface DailyRecapRecord {
+  id: string;
+  dateKey: string;
+  status: "draft" | "reviewed" | "confirmed";
+  tasks: DailyRecapTaskState[];
+  completedTaskIds: string[];
+  pendingTasks: DailyRecapPendingTaskPayload[];
+  requiresScheduleConfirmation: boolean;
+  pendingChanges: DailyRecapPendingChangeResponse[];
+  confirmedAt: string | null;
+  scorecard: DailyRecapScorecardResponse | null;
+}
+
+export type DailyRecapTodayRecord = DailyRecapRecord;
+
+export interface DailyRecapReviewRecord {
+  recap: DailyRecapRecord;
+}
+
+export interface DailyRecapConfirmPayload {
+  recapId: string;
+  acceptScheduleChanges: boolean;
+}
+
+export interface DailyRecapConfirmRecord {
+  recap: DailyRecapRecord & {
+    status: "confirmed";
+    confirmedAt: string;
+    scorecard: DailyRecapScorecardResponse;
+  };
+  scorecard: DailyRecapScorecardResponse;
+  updatedTasks: Array<{ id: string; status: string }>;
+  updatedScheduleBlocks: Array<{
+    id: string;
+    taskId: string;
+    title: string;
+    startAt: string;
+    endAt: string;
+    durationMinutes: number;
+    status: "confirmed";
+  }>;
+}
+
 function buildUrl(baseUrl: string, path: string) {
   return `${baseUrl.replace(/\/$/, "")}${path}`;
 }
@@ -208,7 +288,7 @@ function readJsonText(text: string) {
 }
 
 async function requestJson<TResponse>(
-  fetchImpl: typeof fetch,
+  fetchImpl: typeof fetch | undefined,
   transport: MiniProgramTransport | undefined,
   baseUrl: string,
   path: string,
@@ -240,6 +320,10 @@ async function requestJson<TResponse>(
     return payload as TResponse;
   }
 
+  if (!fetchImpl) {
+    throw new Error("No request transport available");
+  }
+
   const response = await fetchImpl(url, {
     ...init,
     headers,
@@ -260,10 +344,6 @@ async function requestJson<TResponse>(
 export function createMiniProgramApiClient(options: MiniProgramApiClientOptions) {
   const transport = options.transport;
   const fetchImpl = options.fetchImpl ?? globalThis.fetch?.bind(globalThis);
-
-  if (!fetchImpl && !transport) {
-    throw new Error("No request transport available");
-  }
 
   return {
     intakeTask(payload: TaskIntakePayload) {
@@ -289,6 +369,41 @@ export function createMiniProgramApiClient(options: MiniProgramApiClientOptions)
         method: "POST",
         body: JSON.stringify(payload),
       });
+    },
+    getTodayDailyRecap() {
+      return requestJson<DailyRecapTodayRecord>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        "/daily-recaps/today",
+        {
+          method: "GET",
+        },
+      );
+    },
+    reviewTodayDailyRecap(payload: DailyRecapReviewPayload) {
+      return requestJson<DailyRecapReviewRecord>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        "/daily-recaps/today/review",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+    },
+    confirmTodayDailyRecap(payload: DailyRecapConfirmPayload) {
+      return requestJson<DailyRecapConfirmRecord>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        "/daily-recaps/today/confirm",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
     },
     generateReminders(payload: ReminderGeneratePayload = {}) {
       return requestJson<{ reminders: ReminderRecordResponse[]; summary: ReminderSummaryResponse }>(

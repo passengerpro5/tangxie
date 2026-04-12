@@ -38,6 +38,10 @@ async function requestJson(fetchImpl, transport, baseUrl, path, init) {
     return payload;
   }
 
+  if (!fetchImpl) {
+    throw new Error("No request transport available");
+  }
+
   const response = await fetchImpl(url, {
     ...init,
     headers,
@@ -58,10 +62,6 @@ async function requestJson(fetchImpl, transport, baseUrl, path, init) {
 export function createMiniProgramApiClient(options) {
   const transport = options.transport;
   const fetchImpl = options.fetchImpl ?? globalThis.fetch?.bind(globalThis);
-
-  if (!fetchImpl && !transport) {
-    throw new Error("No request transport available");
-  }
 
   return {
     intakeTask(payload) {
@@ -84,6 +84,23 @@ export function createMiniProgramApiClient(options) {
     },
     confirmSchedule(payload) {
       return requestJson(fetchImpl, transport, options.baseUrl, "/scheduling/confirm", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    },
+    getTodayDailyRecap() {
+      return requestJson(fetchImpl, transport, options.baseUrl, "/daily-recaps/today", {
+        method: "GET",
+      });
+    },
+    reviewTodayDailyRecap(payload) {
+      return requestJson(fetchImpl, transport, options.baseUrl, "/daily-recaps/today/review", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    },
+    confirmTodayDailyRecap(payload) {
+      return requestJson(fetchImpl, transport, options.baseUrl, "/daily-recaps/today/confirm", {
         method: "POST",
         body: JSON.stringify(payload),
       });

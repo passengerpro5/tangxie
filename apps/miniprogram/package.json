@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --experimental-strip-types --test tests/home-page.spec.ts",
-    "test:arrange-flow": "node --experimental-strip-types --test tests/arrange-flow.spec.ts"
+    "test:arrange-flow": "node --experimental-strip-types --test tests/arrange-flow.spec.ts",
+    "test:daily-recap": "node --experimental-strip-types --test tests/daily-recap.spec.ts"
   }
 }
