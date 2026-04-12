@@ -8,9 +8,12 @@ import {
 } from "./modules/ai-gateway/provider-client.ts";
 import { createClarificationHandler } from "./modules/clarification/clarification.controller.ts";
 import { ClarificationService } from "./modules/clarification/clarification.service.ts";
+import { createDailyRecapHandler } from "./modules/daily-recap/daily-recap.controller.ts";
+import { DailyRecapService } from "./modules/daily-recap/daily-recap.service.ts";
 import { createInMemoryAdminAiRepository } from "./persistence/admin-ai-repository.ts";
 import type { AdminAiRepository } from "./persistence/admin-ai-repository.ts";
 import { createInMemoryArrangeConversationsRepository } from "./persistence/arrange-conversations-repository.ts";
+import { createInMemoryDailyRecapsRepository } from "./persistence/daily-recaps-repository.ts";
 import { createInMemoryRemindersRepository } from "./persistence/reminders-repository.ts";
 import type { ArrangeConversationsRepository } from "./persistence/arrange-conversations-repository.ts";
 import { PrismaArrangeConversationsRepository } from "./persistence/prisma-arrange-conversations-repository.ts";
@@ -110,6 +113,12 @@ function createDefaultSchedulingRepository() {
   return createInMemorySchedulingRepository();
 }
 
+function createDefaultDailyRecapRepository(options: AppModuleOptions = {}) {
+  return createInMemoryDailyRecapsRepository({
+    now: options.now,
+  });
+}
+
 function createDefaultRemindersRepository() {
   if (process.env.DATABASE_URL) {
     return new PrismaRemindersRepository(getPrismaClient());
@@ -190,6 +199,7 @@ export function createAppHandler(options: AppModuleOptions = {}): ApiHandler {
   const arrangeConversationsRepository = createDefaultArrangeConversationsRepository(options);
   const tasksRepository = createDefaultTasksRepository(options);
   const schedulingRepository = createDefaultSchedulingRepository();
+  const dailyRecapRepository = createDefaultDailyRecapRepository(options);
   const remindersRepository = createDefaultRemindersRepository();
   const providerClient =
     options.providerClient ?? createOpenAICompatibleProviderClient();
@@ -201,6 +211,10 @@ export function createAppHandler(options: AppModuleOptions = {}): ApiHandler {
   const schedulingService = new SchedulingService({
     now: options.now,
     repository: schedulingRepository,
+  });
+  const dailyRecapService = new DailyRecapService({
+    now: options.now,
+    repository: dailyRecapRepository,
   });
   const remindersService = new RemindersService({
     now: options.now,
@@ -231,6 +245,7 @@ export function createAppHandler(options: AppModuleOptions = {}): ApiHandler {
   });
   const arrangeChatHandler = createArrangeChatHandler(arrangeChatService);
   const clarificationHandler = createClarificationHandler(clarificationService);
+  const dailyRecapHandler = createDailyRecapHandler(dailyRecapService);
   const remindersHandler = createRemindersHandler(remindersService);
   const schedulingHandler = createSchedulingHandler(schedulingService);
   const adminAiHandler = adminAiModule.handler;
@@ -308,6 +323,11 @@ export function createAppHandler(options: AppModuleOptions = {}): ApiHandler {
       url.pathname.startsWith("/clarification/sessions/")
     ) {
       await clarificationHandler(req, res);
+      return;
+    }
+
+    if (url.pathname === "/daily-recaps/today" || url.pathname.startsWith("/daily-recaps/")) {
+      await dailyRecapHandler(req, res);
       return;
     }
 
