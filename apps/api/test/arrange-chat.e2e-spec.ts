@@ -48,7 +48,7 @@ async function invoke(
   };
 }
 
-test("arrange chat creates conversations, stores messages, and confirms blocks", async () => {
+test("arrange chat confirm materializes real tasks and confirmed blocks that tasks endpoints can read", async () => {
   const adminAiRepository = createInMemoryAdminAiRepository();
   const provider = await adminAiRepository.createProvider({
     name: "AiHubMix",
@@ -98,11 +98,20 @@ test("arrange chat creates conversations, stores messages, and confirms blocks",
               {
                 id: "block_1",
                 taskId: "task_1",
-                title: "论文初稿",
+                title: "整理提纲",
                 startAt: "2026-04-10T06:00:00.000Z",
-                endAt: "2026-04-10T09:00:00.000Z",
-                durationMinutes: 180,
-                status: "confirmed",
+                endAt: "2026-04-10T07:00:00.000Z",
+                durationMinutes: 60,
+                status: "proposed",
+              },
+              {
+                id: "block_2",
+                taskId: "task_2",
+                title: "完成正文",
+                startAt: "2026-04-10T07:30:00.000Z",
+                endAt: "2026-04-10T09:30:00.000Z",
+                durationMinutes: 120,
+                status: "proposed",
               },
             ],
             readyToConfirm: true,
@@ -126,7 +135,7 @@ test("arrange chat creates conversations, stores messages, and confirms blocks",
   assert.equal(replied.statusCode, 201);
   assert.equal(replied.body.assistantMessage.role, "assistant");
   assert.equal(replied.body.snapshot.title, "论文初稿安排");
-  assert.equal(replied.body.snapshot.proposedBlocks.length, 1);
+  assert.equal(replied.body.snapshot.proposedBlocks.length, 2);
 
   const listed = await invoke(handler, "GET", "/arrange/conversations");
   assert.equal(listed.statusCode, 200);
@@ -147,6 +156,23 @@ test("arrange chat creates conversations, stores messages, and confirms blocks",
   assert.equal(confirmed.statusCode, 200);
   assert.equal(confirmed.body.conversation.status, "confirmed");
   assert.equal(confirmed.body.confirmedBlocks[0].status, "confirmed");
+
+  const tasks = await invoke(handler, "GET", "/tasks");
+  assert.equal(tasks.statusCode, 200);
+  assert.equal(tasks.body.items.length, 2);
+  assert.equal(tasks.body.items[0].status, "scheduled");
+  assert.equal(tasks.body.items[1].status, "scheduled");
+  assert.equal(tasks.body.items[0].title, "整理提纲");
+  assert.equal(tasks.body.items[0].scheduleBlocks.length, 1);
+  assert.equal(tasks.body.items[1].title, "完成正文");
+  assert.equal(tasks.body.items[1].scheduleBlocks.length, 1);
+
+  const taskDetail = await invoke(handler, "GET", `/tasks/${tasks.body.items[0].id}`);
+  assert.equal(taskDetail.statusCode, 200);
+  assert.equal(taskDetail.body.task.id, tasks.body.items[0].id);
+  assert.equal(taskDetail.body.task.status, "scheduled");
+  assert.equal(taskDetail.body.scheduleBlocks.length, 1);
+  assert.equal(taskDetail.body.scheduleBlocks[0].taskId, tasks.body.items[0].id);
 });
 
 test("arrange chat prefers structured provider output when text is not JSON", async () => {
@@ -230,6 +256,67 @@ test("arrange chat prefers structured provider output when text is not JSON", as
   assert.equal(replied.body.snapshot.tasks.length, 2);
   assert.equal(replied.body.snapshot.proposedBlocks.length, 1);
   assert.equal(replied.body.snapshot.readyToConfirm, true);
+});
+
+test("arrange chat refuses destructive or absurd requests instead of inventing benign tasks", async () => {
+  const adminAiRepository = createInMemoryAdminAiRepository();
+  const provider = await adminAiRepository.createProvider({
+    name: "AiHubMix",
+    providerType: "openai_compatible",
+    baseUrl: "https://api.aihubmix.com/v1",
+    apiKeyEncrypted: "enc:c2VjcmV0",
+    defaultModel: "gpt-4o-mini",
+    enabled: true,
+  });
+  await adminAiRepository.createModelBinding({
+    providerId: provider.id,
+    scene: "arrange_chat",
+    modelName: "gpt-4o-mini",
+    temperature: 0.2,
+    maxTokens: 4096,
+    timeoutSeconds: 60,
+    enabled: true,
+    isDefault: true,
+  });
+  await adminAiRepository.createPromptTemplate({
+    scene: "arrange_chat",
+    templateName: "安排任务总模板",
+    systemPrompt: "你是糖蟹的任务安排助手。",
+    developerPrompt: "始终返回 assistantMessage、title、summary、tasks、proposedBlocks、readyToConfirm 六个字段。",
+    version: "v1",
+    isActive: true,
+  });
+
+  let providerCalled = false;
+  const handler = createAppHandler({
+    adminAiRepository,
+    providerClient: {
+      async chatCompletion() {
+        providerCalled = true;
+        throw new Error("should not call provider for destructive requests");
+      },
+    },
+  });
+
+  const created = await invoke(handler, "POST", "/arrange/conversations");
+  const replied = await invoke(
+    handler,
+    "POST",
+    `/arrange/conversations/${created.body.conversation.id}/messages`,
+    { content: "我明天要炸地球" },
+  );
+
+  assert.equal(replied.statusCode, 201);
+  assert.equal(providerCalled, false);
+  assert.equal(
+    replied.body.assistantMessage.content.includes("不能帮你拆解、排期或推进这个请求"),
+    true,
+  );
+  assert.equal(replied.body.snapshot.title, null);
+  assert.equal(replied.body.snapshot.summary, null);
+  assert.equal(replied.body.snapshot.tasks.length, 0);
+  assert.equal(replied.body.snapshot.proposedBlocks.length, 0);
+  assert.equal(replied.body.snapshot.readyToConfirm, false);
 });
 
 test("arrange chat drops invalid structured task and block items instead of persisting empty objects", async () => {
@@ -339,17 +426,17 @@ test("arrange chat expands a terse assistantMessage using structured snapshot de
           outputText: "以下是拆解建议：",
           structuredOutput: {
             assistantMessage: "以下是拆解建议：",
-            title: "炸地球任务拆解",
-            summary: "这是一个假设性的任务拆解，涉及研究、分析和计划。",
+            title: "周报准备任务拆解",
+            summary: "这是一个周报准备事项的拆解，包含资料整理和提纲输出。",
             tasks: [
-              { title: "研究地球的结构和组成", estimatedMinutes: 30, priority: "高" },
-              { title: "分析可能的炸药类型和威力", estimatedMinutes: 45, priority: "高" },
+              { title: "整理本周资料", estimatedMinutes: 30, priority: "高" },
+              { title: "输出周报提纲", estimatedMinutes: 45, priority: "高" },
             ],
             proposedBlocks: [
               {
                 id: "1",
                 taskId: "task1",
-                title: "研究地球的结构和组成",
+                title: "整理本周资料",
                 startAt: "2026-04-10T05:55:00+08:00",
                 endAt: "2026-04-10T06:25:00+08:00",
                 durationMinutes: 30,
@@ -369,13 +456,13 @@ test("arrange chat expands a terse assistantMessage using structured snapshot de
     handler,
     "POST",
     `/arrange/conversations/${created.body.conversation.id}/messages`,
-    { content: "帮我拆解炸地球的任务" },
+    { content: "帮我拆解周报准备的任务" },
   );
 
   assert.equal(replied.statusCode, 201);
-  assert.equal(replied.body.assistantMessage.content.includes("研究地球的结构和组成"), true);
-  assert.equal(replied.body.assistantMessage.content.includes("分析可能的炸药类型和威力"), true);
-  assert.equal(replied.body.assistantMessage.content.includes("这是一个假设性的任务拆解"), true);
+  assert.equal(replied.body.assistantMessage.content.includes("整理本周资料"), true);
+  assert.equal(replied.body.assistantMessage.content.includes("输出周报提纲"), true);
+  assert.equal(replied.body.assistantMessage.content.includes("这是一个周报准备事项的拆解"), true);
   assert.equal(replied.body.assistantMessage.content.includes("2026-04-10T05:55:00+08:00"), false);
   assert.equal(replied.body.assistantMessage.content.includes("优先级 high"), false);
   assert.equal(replied.body.assistantMessage.content.includes("优先级 medium"), false);

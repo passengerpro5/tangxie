@@ -9,10 +9,14 @@ import {
   type ArrangeConversationSnapshot,
   type ArrangeConversationsRepository,
 } from "../../persistence/arrange-conversations-repository.ts";
+import { createInMemorySchedulingRepository, type SchedulingRepository } from "../../persistence/scheduling-repository.ts";
+import { createInMemoryTasksRepository, type TaskRecord, type TasksRepository } from "../../persistence/tasks-repository.ts";
 import { z } from "zod";
 
 export interface ArrangeChatServiceOptions {
   conversationsRepository?: ArrangeConversationsRepository;
+  tasksRepository?: TasksRepository;
+  schedulingRepository?: SchedulingRepository;
   adminAiRepository: AdminAiRepository;
   providerClient: OpenAICompatibleProviderClient;
   now?: () => Date;
@@ -50,6 +54,19 @@ export const arrangeStructuredOutputSchema = z.object({
 });
 
 type ArrangeStructuredOutput = z.infer<typeof arrangeStructuredOutputSchema>;
+
+const ARRANGE_CHAT_BASE_SYSTEM_PROMPT = [
+  "你是糖蟹的任务安排助手。",
+  "你只处理现实、合法、安全、可执行的个人事项安排。",
+  "不要把明显危险、违法、伤害、破坏、武器、爆炸、自杀/自残、恐怖主义，或明显不现实/荒诞的目标，改写成看似正常的事项。",
+].join("");
+
+const ARRANGE_CHAT_BASE_DEVELOPER_PROMPT = [
+  "只有在用户请求是安全、合法、现实且可执行的事项时，才生成 tasks 和 proposedBlocks。",
+  "如果请求不安全、不合法、明显荒诞、明显破坏性，或者根本不是可安排的事项：assistantMessage 用中文简短拒绝；title=null；summary=null；tasks=[]；proposedBlocks=[]；readyToConfirm=false。",
+  "不要擅自把用户原意柔化、洗白或改写成别的良性任务。",
+  "如果用户表达不清但仍属于正常事项，可以先追问；如果请求本身就不该协助，则不要追问，直接拒绝。",
+].join("");
 
 const arrangeStructuredOutputNormalizationSchema = z.object({
   assistantMessage: z.string().min(1),
@@ -93,6 +110,51 @@ function createEmptySnapshot(): ArrangeConversationSnapshot {
     tasks: [],
     proposedBlocks: [],
     readyToConfirm: false,
+  };
+}
+
+function containsUnsafeArrangeIntent(content: string) {
+  const normalized = content.replace(/\s+/g, "").toLowerCase();
+  const patterns = [
+    /炸地球/,
+    /毁灭(?:地球|世界)/,
+    /世界末日/,
+    /恐袭/,
+    /炸弹/,
+    /爆破/,
+    /枪击/,
+    /屠杀/,
+    /投毒/,
+    /绑架/,
+    /抢银行/,
+    /纵火/,
+    /制毒/,
+    /杀人/,
+    /自杀/,
+    /自残/,
+    /bombtheearth/,
+    /destroytheworld/,
+    /terror/,
+    /shoot/,
+    /poison/,
+    /kidnap/,
+    /suicide/,
+    /selfharm/,
+  ];
+
+  return patterns.some((pattern) => pattern.test(normalized));
+}
+
+function createUnsupportedRequestResult(): {
+  assistantMessage: string;
+  snapshot: ArrangeConversationSnapshot;
+  conversationTitle: string;
+} {
+  return {
+    assistantMessage:
+      "这个请求涉及明显的伤害、破坏或不现实目标，我不能帮你拆解、排期或推进这个请求。你可以换成一个安全、合法、现实的事项，我再帮你安排。",
+    snapshot: createEmptySnapshot(),
+    conversationTitle: "不支持的请求",
   };
 }
 
@@ -182,6 +244,23 @@ function normalizePriorityLabel(priority?: string) {
   }
 
   return priority;
+}
+
+function normalizePriorityScore(priority?: string) {
+  const label = normalizePriorityLabel(priority);
+  if (label === "高") {
+    return 90;
+  }
+
+  if (label === "中") {
+    return 70;
+  }
+
+  if (label === "低") {
+    return 50;
+  }
+
+  return null;
 }
 
 function formatUserFacingTimeRange(startAt: string, endAt: string) {
@@ -324,6 +403,8 @@ function buildTimeContextMessage(now: Date) {
 
 export class ArrangeChatService {
   private readonly conversationsRepository: ArrangeConversationsRepository;
+  private readonly tasksRepository: TasksRepository;
+  private readonly schedulingRepository: SchedulingRepository;
   private readonly adminAiRepository: AdminAiRepository;
   private readonly providerClient: OpenAICompatibleProviderClient;
   private readonly clock: () => Date;
@@ -332,6 +413,14 @@ export class ArrangeChatService {
     this.conversationsRepository =
       options.conversationsRepository ??
       createInMemoryArrangeConversationsRepository({ now: options.now });
+    this.tasksRepository =
+      options.tasksRepository ??
+      createInMemoryTasksRepository({
+        now: options.now,
+      });
+    this.schedulingRepository =
+      options.schedulingRepository ??
+      createInMemorySchedulingRepository();
     this.adminAiRepository = options.adminAiRepository;
     this.providerClient = options.providerClient;
     this.clock = options.now ?? (() => new Date());
@@ -372,6 +461,32 @@ export class ArrangeChatService {
       content,
     });
 
+    if (containsUnsafeArrangeIntent(content)) {
+      const rejected = createUnsupportedRequestResult();
+      const assistantMessage = await this.conversationsRepository.appendMessage({
+        conversationId,
+        role: "assistant",
+        content: rejected.assistantMessage,
+      });
+      const updatedConversation = await this.conversationsRepository.updateConversation(conversationId, {
+        title: rejected.conversationTitle,
+        summary: rejected.snapshot.summary,
+        snapshot: rejected.snapshot,
+        lastMessageAt: this.clock(),
+      });
+
+      if (!updatedConversation) {
+        throw new Error("Conversation not found");
+      }
+
+      return {
+        conversation: updatedConversation,
+        userMessage,
+        assistantMessage,
+        snapshot: updatedConversation.snapshot,
+      };
+    }
+
     const providers = await this.adminAiRepository.listProviders();
     const bindings = await this.adminAiRepository.listModelBindings();
     const prompts = await this.adminAiRepository.listPromptTemplates();
@@ -386,6 +501,11 @@ export class ArrangeChatService {
       throw new Error("No provider found for scene: arrange_chat");
     }
 
+    const apiKey = decryptApiKey(provider.apiKeyEncrypted).trim();
+    if (!apiKey) {
+      throw new Error(`No API key configured for provider: ${provider.name}`);
+    }
+
     const prompt = prompts.find((item) => item.scene === "arrange_chat" && item.isActive);
     if (!prompt) {
       throw new Error("No active prompt template found for scene: arrange_chat");
@@ -393,7 +513,7 @@ export class ArrangeChatService {
 
     const response = await this.providerClient.chatCompletion({
       baseUrl: provider.baseUrl,
-      apiKey: decryptApiKey(provider.apiKeyEncrypted),
+      apiKey,
       model: binding.modelName || provider.defaultModel,
       temperature: binding.temperature,
       maxTokens: binding.maxTokens,
@@ -405,8 +525,10 @@ export class ArrangeChatService {
           "Return the assistant reply text plus a structured scheduling snapshot with tasks and proposed time blocks.",
       },
       messages: [
+        { role: "system", content: ARRANGE_CHAT_BASE_SYSTEM_PROMPT },
         { role: "system", content: prompt.systemPrompt },
         { role: "system", content: buildTimeContextMessage(this.clock()) },
+        { role: "developer" as const, content: ARRANGE_CHAT_BASE_DEVELOPER_PROMPT },
         ...(prompt.developerPrompt ? [{ role: "developer" as const, content: prompt.developerPrompt }] : []),
         ...detail.messages.map((message) => ({
           role: message.role,
@@ -447,8 +569,30 @@ export class ArrangeChatService {
       throw new Error("No proposed blocks available");
     }
 
-    const confirmedBlocks = detail.snapshot.proposedBlocks.map((block) => ({
-      ...block,
+    const createdTasks = await this.materializeTasks(detail);
+    const confirmedBlockRecords = await this.schedulingRepository.createConfirmedBlocks(
+      detail.snapshot.proposedBlocks.map((block, index) => {
+        const matchedTask =
+          createdTasks.byExternalId.get(block.taskId) ??
+          createdTasks.byTitle.get(block.title) ??
+          createdTasks.ordered[Math.min(index, createdTasks.ordered.length - 1)];
+
+        return {
+          taskId: matchedTask.id,
+          title: block.title,
+          startAt: new Date(block.startAt),
+          endAt: new Date(block.endAt),
+          durationMinutes: block.durationMinutes,
+        };
+      }),
+    );
+    const confirmedBlocks = confirmedBlockRecords.map((block) => ({
+      id: block.id,
+      taskId: block.taskId,
+      title: block.title,
+      startAt: block.startAt.toISOString(),
+      endAt: block.endAt.toISOString(),
+      durationMinutes: block.durationMinutes,
       status: "confirmed" as const,
     }));
     const updatedConversation = await this.conversationsRepository.updateConversation(conversationId, {
@@ -469,6 +613,75 @@ export class ArrangeChatService {
       conversation: updatedConversation,
       confirmedBlocks,
       snapshot: updatedConversation.snapshot,
+    };
+  }
+
+  private async materializeTasks(detail: ArrangeConversationDetail): Promise<{
+    ordered: TaskRecord[];
+    byExternalId: Map<string, TaskRecord>;
+    byTitle: Map<string, TaskRecord>;
+  }> {
+    const externalIds = [...new Set(detail.snapshot.proposedBlocks.map((block) => block.taskId).filter(Boolean))];
+    const fallbackDeadlineAt = detail.snapshot.proposedBlocks.reduce<Date | null>((latest, block) => {
+      const endAt = new Date(block.endAt);
+      if (Number.isNaN(endAt.getTime())) {
+        return latest;
+      }
+
+      if (!latest || endAt.getTime() > latest.getTime()) {
+        return endAt;
+      }
+
+      return latest;
+    }, null);
+
+    const taskSeeds =
+      detail.snapshot.tasks.length > 0
+        ? detail.snapshot.tasks.map((task, index) => ({
+            externalId: externalIds[index] ?? `snapshot-task-${index + 1}`,
+            title: task.title,
+            estimatedDurationMinutes: task.estimatedMinutes ?? null,
+            priority: task.priority,
+          }))
+        : detail.snapshot.proposedBlocks.map((block, index) => ({
+            externalId: block.taskId || `snapshot-task-${index + 1}`,
+            title: block.title,
+            estimatedDurationMinutes: block.durationMinutes,
+            priority: undefined,
+          }));
+
+    const ordered: TaskRecord[] = [];
+    const byExternalId = new Map<string, TaskRecord>();
+    const byTitle = new Map<string, TaskRecord>();
+
+    for (const seed of taskSeeds) {
+      const matchedBlock = detail.snapshot.proposedBlocks.find(
+        (block) => block.taskId === seed.externalId || block.title === seed.title,
+      );
+      const deadlineAt = matchedBlock ? new Date(matchedBlock.endAt) : fallbackDeadlineAt;
+      const createdTask = await this.tasksRepository.createTask({
+        title: seed.title,
+        description: detail.snapshot.summary ?? detail.conversation.title,
+        sourceType: "text",
+        status: "scheduled",
+        deadlineAt: deadlineAt && !Number.isNaN(deadlineAt.getTime()) ? deadlineAt : null,
+        estimatedDurationMinutes: seed.estimatedDurationMinutes,
+        priorityScore: normalizePriorityScore(seed.priority),
+        priorityRank: null,
+        importanceReason: `arrange_conversation:${detail.conversation.id}`,
+        createdByAI: true,
+        userConfirmed: true,
+      });
+
+      ordered.push(createdTask);
+      byExternalId.set(seed.externalId, createdTask);
+      byTitle.set(seed.title, createdTask);
+    }
+
+    return {
+      ordered,
+      byExternalId,
+      byTitle,
     };
   }
 }

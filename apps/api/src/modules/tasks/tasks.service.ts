@@ -2,6 +2,7 @@ import {
   createInMemoryTasksRepository,
   type ClarificationMessageRecord,
   type ClarificationSessionRecord,
+  type CreateTaskRecordInput,
   type TaskInputSourceRecord,
   type TaskRecord,
   type TasksRepository,
@@ -365,6 +366,14 @@ export class TasksService {
 
   async listTasks() {
     return this.repository.listTasks();
+  }
+
+  async getTask(taskId: string) {
+    return this.repository.findTaskById(taskId);
+  }
+
+  async createTask(input: CreateTaskRecordInput) {
+    return this.repository.createTask(input);
   }
 
   async listSessions() {

@@ -1,0 +1,78 @@
+<h2>糖蟹 · 每日复盘解锁成绩单</h2>
+<p class="subtitle">先确认事实，再处理未完成任务，最后解锁可分享的今日成绩单</p>
+
+<div class="mockup">
+  <div class="mockup-header">主流程草图</div>
+  <div class="mockup-body">
+    <div style="display:grid;gap:18px;">
+      <div style="padding:16px 18px;border-radius:18px;background:#fff7f1;border:1px solid rgba(127,89,53,.12);">
+        <strong>01 完成最后一个任务</strong>
+        <p style="margin:8px 0 0;">系统自动提示：今天要不要顺手做个收尾复盘？</p>
+      </div>
+
+      <div style="display:flex;justify-content:center;font-size:24px;color:#a77555;">↓</div>
+
+      <div style="padding:16px 18px;border-radius:18px;background:#fffdf8;border:1px solid rgba(127,89,53,.12);">
+        <strong>02 勾选今日已完成任务</strong>
+        <p style="margin:8px 0 0;">点击任务卡片时触发局部庆祝动效，让“确认完成”本身有奖励感。</p>
+      </div>
+
+      <div style="display:flex;justify-content:center;font-size:24px;color:#a77555;">↓</div>
+
+      <div style="padding:16px 18px;border-radius:18px;background:#fff7f1;border:1px solid rgba(127,89,53,.12);">
+        <strong>03 处理未完成任务</strong>
+        <p style="margin:8px 0 0;">如果还有没完成的任务，系统自动追问：现在进度如何？要不要重排？</p>
+      </div>
+
+      <div style="display:flex;justify-content:center;font-size:24px;color:#a77555;">↓</div>
+
+      <div class="split">
+        <div class="mockup">
+          <div class="mockup-header">有重排改动</div>
+          <div class="mockup-body">
+            <p>先展示新的安排方案，和用户二次确认。</p>
+            <p style="margin:8px 0 0;">确认后才允许解锁成绩单。</p>
+          </div>
+        </div>
+        <div class="mockup">
+          <div class="mockup-header">没有重排改动</div>
+          <div class="mockup-body">
+            <p>直接出现“查看今日成绩单”按钮。</p>
+            <p style="margin:8px 0 0;">同时保留回退到上一环节重新处理的入口。</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:center;font-size:24px;color:#a77555;">↓</div>
+
+      <div style="padding:16px 18px;border-radius:18px;background:linear-gradient(135deg, rgba(255,191,114,.22), rgba(255,144,106,.18));border:1px solid rgba(237,145,92,.16);">
+        <strong>04 解锁今日成绩单</strong>
+        <p style="margin:8px 0 0;">展示今日总分 / 高光指标 / 有梗称号，再引导用户分享。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="flow-ok" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>流程方向对</h3>
+      <p>可以继续往未完成任务状态和评分规则细化。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="flow-heavy" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>有点重</h3>
+      <p>复盘步骤偏多，需要再压缩交互。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="flow-missing" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>还缺一步</h3>
+      <p>主链路基本对，但还缺一个关键节点。</p>
+    </div>
+  </div>
+</div>

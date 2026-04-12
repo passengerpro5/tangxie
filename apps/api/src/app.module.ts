@@ -37,6 +37,13 @@ interface AppModuleOptions {
   providerClient?: OpenAICompatibleProviderClient;
 }
 
+const DEFAULT_LOCAL_AI_SCENE = "arrange_chat";
+const DEFAULT_LOCAL_PROMPT_TEMPLATE_NAME = "arrange-chat-v1";
+const DEFAULT_LOCAL_SYSTEM_PROMPT =
+  "你是糖蟹的任务安排助手。你需要通过多轮对话理解任务、补齐关键信息、拆分子任务，并给出可执行的时间安排。";
+const DEFAULT_LOCAL_DEVELOPER_PROMPT =
+  "优先返回自然语言回复，并尽量保持输出可被前端解析为结构化安排结果。";
+
 function buildCorsHeaders(req: IncomingMessage) {
   const origin = typeof req.headers?.origin === "string" ? req.headers.origin : "*";
   return {
@@ -111,6 +118,73 @@ function createDefaultRemindersRepository() {
   return createInMemoryRemindersRepository();
 }
 
+function encryptLocalApiKey(apiKey: string) {
+  if (!apiKey) {
+    return "";
+  }
+
+  return `enc:${Buffer.from(apiKey, "utf8").toString("base64")}`;
+}
+
+function resolveLocalAiBootstrapConfig() {
+  return {
+    providerName: process.env.AI_DEFAULT_PROVIDER ?? "aihubmix",
+    baseUrl: process.env.AI_DEFAULT_BASE_URL ?? "https://api.aihubmix.com/v1",
+    model: process.env.AI_DEFAULT_MODEL ?? "gpt-4o-mini",
+    apiKey: process.env.AI_DEFAULT_API_KEY ?? "",
+  };
+}
+
+async function bootstrapLocalInMemoryAdminAiRepository(repository: AdminAiRepository) {
+  const defaults = resolveLocalAiBootstrapConfig();
+  const providers = await repository.listProviders();
+  let provider =
+    providers.find((item) => item.name === defaults.providerName)
+    ?? providers.find((item) => item.enabled)
+    ?? providers[0];
+
+  if (!provider) {
+    provider = await repository.createProvider({
+      name: defaults.providerName,
+      providerType: "openai_compatible",
+      baseUrl: defaults.baseUrl,
+      apiKeyEncrypted: encryptLocalApiKey(defaults.apiKey),
+      defaultModel: defaults.model,
+      enabled: true,
+    });
+  }
+
+  const bindings = await repository.listModelBindings();
+  const hasArrangeChatBinding = bindings.some((item) => item.scene === DEFAULT_LOCAL_AI_SCENE);
+  if (!hasArrangeChatBinding) {
+    await repository.createModelBinding({
+      providerId: provider.id,
+      scene: DEFAULT_LOCAL_AI_SCENE,
+      modelName: provider.defaultModel || defaults.model,
+      temperature: 0.2,
+      maxTokens: 4096,
+      timeoutSeconds: 60,
+      enabled: true,
+      isDefault: true,
+    });
+  }
+
+  const prompts = await repository.listPromptTemplates();
+  const hasActiveArrangeChatPrompt = prompts.some(
+    (item) => item.scene === DEFAULT_LOCAL_AI_SCENE && item.isActive,
+  );
+  if (!hasActiveArrangeChatPrompt) {
+    await repository.createPromptTemplate({
+      scene: DEFAULT_LOCAL_AI_SCENE,
+      templateName: DEFAULT_LOCAL_PROMPT_TEMPLATE_NAME,
+      systemPrompt: DEFAULT_LOCAL_SYSTEM_PROMPT,
+      developerPrompt: DEFAULT_LOCAL_DEVELOPER_PROMPT,
+      version: "v1",
+      isActive: true,
+    });
+  }
+}
+
 export function createAppHandler(options: AppModuleOptions = {}): ApiHandler {
   const adminAiRepository = createDefaultAdminAiRepository(options);
   const arrangeConversationsRepository = createDefaultArrangeConversationsRepository(options);
@@ -140,15 +214,30 @@ export function createAppHandler(options: AppModuleOptions = {}): ApiHandler {
   const arrangeChatService = new ArrangeChatService({
     adminAiRepository,
     conversationsRepository: arrangeConversationsRepository,
+    tasksRepository,
+    schedulingRepository,
     providerClient,
     now: options.now,
   });
-  const tasksHandler = createTasksHandler(tasksService);
+  const tasksHandler = createTasksHandler(tasksService, {
+    listConfirmedBlocks: () => schedulingService.listConfirmedBlocks(),
+    updateConfirmedBlock: ({ taskId, blockId, startAt, endAt }) =>
+      schedulingService.updateConfirmedBlock({
+        taskId,
+        blockId,
+        startAt,
+        endAt,
+      }),
+  });
   const arrangeChatHandler = createArrangeChatHandler(arrangeChatService);
   const clarificationHandler = createClarificationHandler(clarificationService);
   const remindersHandler = createRemindersHandler(remindersService);
   const schedulingHandler = createSchedulingHandler(schedulingService);
   const adminAiHandler = adminAiModule.handler;
+  const adminAiBootstrap =
+    !process.env.DATABASE_URL && !options.adminAiRepository
+      ? bootstrapLocalInMemoryAdminAiRepository(adminAiRepository)
+      : Promise.resolve();
 
   async function syncSchedulingTasks() {
     const tasks = await tasksService.listTasks();
@@ -167,6 +256,8 @@ export function createAppHandler(options: AppModuleOptions = {}): ApiHandler {
   }
 
   return async (req, res) => {
+    await adminAiBootstrap;
+
     const url = new URL(req.url ?? "/", "http://localhost");
     const originalWriteHead = res.writeHead.bind(res);
     res.writeHead = ((statusCode: number, ...args: unknown[]) => {
@@ -207,7 +298,7 @@ export function createAppHandler(options: AppModuleOptions = {}): ApiHandler {
       return;
     }
 
-    if (url.pathname === "/tasks/intake") {
+    if (url.pathname === "/tasks" || url.pathname === "/tasks/intake" || url.pathname.startsWith("/tasks/")) {
       await tasksHandler(req, res);
       return;
     }
@@ -220,10 +311,7 @@ export function createAppHandler(options: AppModuleOptions = {}): ApiHandler {
       return;
     }
 
-    if (
-      url.pathname === "/scheduling/propose" ||
-      url.pathname === "/scheduling/confirm"
-    ) {
+    if (url.pathname === "/scheduling/propose" || url.pathname === "/scheduling/confirm") {
       await syncSchedulingTasks();
       await schedulingHandler(req, res);
       return;

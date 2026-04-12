@@ -1,0 +1,419 @@
+<style>
+  .intro {
+    max-width: 980px;
+    margin-bottom: 18px;
+  }
+
+  .intro p {
+    margin: 0;
+    color: #94a3b8;
+    line-height: 1.7;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 18px;
+  }
+
+  .stack {
+    display: grid;
+    gap: 18px;
+  }
+
+  .card {
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgba(255,252,247,0.96), rgba(255,247,239,0.92));
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    box-shadow: 0 22px 54px rgba(137, 76, 37, 0.12);
+    padding: 18px;
+  }
+
+  .card h3 {
+    margin: 0 0 8px;
+    color: #2b2118;
+  }
+
+  .card p {
+    margin: 0;
+    color: #6b5b4d;
+    line-height: 1.65;
+  }
+
+  .tag {
+    display: inline-flex;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    color: #9a5b16;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+
+  .phone {
+    border-radius: 30px;
+    background: #fffaf5;
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    padding: 14px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.8);
+  }
+
+  .phone-shell {
+    display: grid;
+    gap: 10px;
+  }
+
+  .header-stack {
+    display: grid;
+    gap: 8px;
+  }
+
+  .primary-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,248,241,0.86));
+    border: 1px solid rgba(180,108,56,0.12);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6);
+  }
+
+  .primary-tab {
+    padding: 11px 14px;
+    border-radius: 18px;
+    color: #8b5e34;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .primary-tab.active {
+    background: linear-gradient(135deg, rgba(245,158,11,0.94), rgba(246,139,107,0.92));
+    color: #fff8f1;
+    box-shadow: 0 10px 20px rgba(246, 139, 107, 0.2);
+  }
+
+  .compact-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .secondary-tabs {
+    display: flex;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+    flex-wrap: nowrap;
+  }
+
+  .secondary-tab {
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.76);
+    border: 1px solid rgba(180,108,56,0.08);
+    color: #8b5e34;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .secondary-tab.active {
+    background: rgba(245, 158, 11, 0.12);
+    color: #9a5b16;
+  }
+
+  .mode-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+
+  .mode-tab {
+    padding: 7px 9px;
+    border-radius: 12px;
+    background: rgba(245, 158, 11, 0.08);
+    color: #8b5e34;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .mode-tab.active {
+    background: rgba(251, 113, 133, 0.14);
+    color: #b8325e;
+  }
+
+  .summary {
+    border-radius: 18px;
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(180,108,56,0.1);
+    padding: 10px 12px;
+  }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .headline {
+    height: 10px;
+    width: 42%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f59e0b, #fb7185);
+  }
+
+  .metrics {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+
+  .metric {
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.1);
+    color: #8b5e34;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .caret {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    color: #9a5b16;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+
+  .section-card {
+    border-radius: 20px;
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(180,108,56,0.08);
+    padding: 12px;
+  }
+
+  .line {
+    height: 9px;
+    border-radius: 999px;
+    background: rgba(183, 127, 79, 0.14);
+  }
+
+  .line.accent {
+    background: linear-gradient(90deg, rgba(245,158,11,0.58), rgba(246,139,107,0.46));
+  }
+
+  .timeline {
+    border-radius: 20px;
+    min-height: 110px;
+    background:
+      repeating-linear-gradient(
+        180deg,
+        rgba(180,108,56,0.06),
+        rgba(180,108,56,0.06) 1px,
+        transparent 1px,
+        transparent 28px
+      );
+    position: relative;
+  }
+
+  .block {
+    position: absolute;
+    left: 10px;
+    right: 14px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(247,178,103,0.92), rgba(246,139,107,0.88));
+  }
+
+  .b1 { top: 16px; height: 34px; }
+  .b2 { top: 68px; right: 60px; height: 42px; }
+
+  .kanban,
+  .planning {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .col {
+    border-radius: 18px;
+    background: rgba(255, 251, 246, 0.96);
+    border: 1px solid rgba(180,108,56,0.08);
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+    min-height: 116px;
+  }
+
+  .task,
+  .bar {
+    border-radius: 14px;
+    background: rgba(247,178,103,0.18);
+    min-height: 30px;
+  }
+
+  .bar {
+    background: linear-gradient(90deg, rgba(247,178,103,0.62), rgba(246,139,107,0.62));
+  }
+
+  .bullets {
+    margin: 12px 0 0;
+    padding-left: 18px;
+    color: #6b5b4d;
+    line-height: 1.75;
+  }
+
+  @media (max-width: 1100px) {
+    .layout,
+    .cards {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="intro">
+  <h2>浮岛混合 D2 · 紧凑版</h2>
+  <p class="subtitle">这是按你的要求压缩后的版本：一级主导航仍然是浮岛式高层级模块，但二级和三级尽量塞进同一水平带里；能不跨行就不跨行，优先减少 tab 占用的高度。</p>
+</div>
+
+<div class="layout">
+  <div class="stack">
+    <div class="card">
+      <div class="tag">日程页</div>
+      <h3>主导航 + 二三级压缩在两层内</h3>
+      <p>顶部直接从一级导航开始；二级和三级合并成一个紧凑区。`今日节奏` 仍只属于日程页。</p>
+      <div class="mock">
+        <div class="phone">
+          <div class="phone-shell">
+            <div class="header-stack">
+              <div class="primary-tabs">
+                <div class="primary-tab active">日程</div>
+                <div class="primary-tab">事项</div>
+                <div class="primary-tab">排期</div>
+              </div>
+              <div class="compact-row">
+                <div class="secondary-tabs">
+                  <div class="secondary-tab active">今日节奏</div>
+                  <div class="secondary-tab">时间轴</div>
+                  <div class="secondary-tab">提醒</div>
+                </div>
+                <div class="mode-tabs">
+                  <div class="mode-tab active">日</div>
+                  <div class="mode-tab">周</div>
+                  <div class="mode-tab">月</div>
+                  <div class="mode-tab">年</div>
+                </div>
+              </div>
+              <div class="summary">
+                <div class="summary-row">
+                  <div class="headline"></div>
+                  <div class="metrics">
+                    <span class="metric">3 待办</span>
+                    <span class="metric">1 高优</span>
+                    <span class="metric">2h</span>
+                    <span class="caret">⌄</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="section-card">
+              <div class="timeline">
+                <div class="block b1"></div>
+                <div class="block b2"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tag">事项页 / 排期页</div>
+      <h3>去掉今日节奏后，顶部更扁更短</h3>
+      <p>事项和排期页不再显示 `今日节奏`，顶部直接保留“一级浮岛 + 一条紧凑控制带”。</p>
+      <div class="mock" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="phone">
+          <div class="phone-shell">
+            <div class="header-stack">
+              <div class="primary-tabs">
+                <div class="primary-tab">日程</div>
+                <div class="primary-tab active">事项</div>
+                <div class="primary-tab">排期</div>
+              </div>
+              <div class="compact-row">
+                <div class="secondary-tabs">
+                  <div class="secondary-tab active">全部事项</div>
+                  <div class="secondary-tab">高优先级</div>
+                </div>
+                <div class="mode-tabs">
+                  <div class="mode-tab active">按列</div>
+                  <div class="mode-tab">按优先级</div>
+                </div>
+              </div>
+            </div>
+            <div class="section-card">
+              <div class="kanban">
+                <div class="col"><div class="line accent"></div><div class="task"></div><div class="task"></div></div>
+                <div class="col"><div class="line accent"></div><div class="task"></div></div>
+                <div class="col"><div class="line accent"></div><div class="task"></div><div class="task"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone">
+          <div class="phone-shell">
+            <div class="header-stack">
+              <div class="primary-tabs">
+                <div class="primary-tab">日程</div>
+                <div class="primary-tab">事项</div>
+                <div class="primary-tab active">排期</div>
+              </div>
+              <div class="compact-row">
+                <div class="secondary-tabs">
+                  <div class="secondary-tab active">规划视图</div>
+                  <div class="secondary-tab">阶段</div>
+                </div>
+                <div class="mode-tabs">
+                  <div class="mode-tab active">日</div>
+                  <div class="mode-tab">周</div>
+                  <div class="mode-tab">月</div>
+                </div>
+              </div>
+            </div>
+            <div class="section-card">
+              <div class="planning">
+                <div class="col"><div class="line accent"></div><div class="bar"></div><div class="bar" style="width:72%;"></div></div>
+                <div class="col"><div class="line accent"></div><div class="bar"></div></div>
+                <div class="col"><div class="line accent"></div><div class="bar" style="width:66%;"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tag">设计原则</div>
+    <h3>D2 这一版的规则</h3>
+    <ul class="bullets">
+      <li>一级主导航保留浮岛感，因为你已经明确希望它层级更高。</li>
+      <li>二级和三级不再各占一整行，而是尽量合并到同一水平区域。</li>
+      <li>只有日程页保留折叠式 `今日节奏`，而且它放在二三级控制带之后，避免抢主导航。</li>
+      <li>事项页和排期页顶部应该明显更短，因为没有 `今日节奏` 模块。</li>
+      <li>如果后续还要继续压高度，最先可删的是二级标签数量，不是主导航权重。</li>
+    </ul>
+    <ul class="bullets">
+      <li>适合你的原因：既满足“浮岛混合”，又尽量减少了顶部行数。</li>
+      <li>潜在风险：如果二级标签太多，会再次挤爆同一行，所以内容命名也要短。</li>
+    </ul>
+  </div>
+</div>

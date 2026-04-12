@@ -4,6 +4,10 @@ import {
   type ArrangeConversationMessageRecord,
   type ArrangeConversationRecord,
   type ArrangeConversationSnapshot,
+  type TaskDetailResponse,
+  type TaskRecordResponse,
+  type TaskScheduleBlockResponse,
+  type TasksListResponse,
 } from "../../services/api.ts";
 import {
   resolveMiniProgramRuntimeConfig,
@@ -21,7 +25,17 @@ import {
   type ArrangeHistoryEntry,
   type ArrangeThreadItem,
 } from "../../components/arrange-sheet/index.ts";
-import { buildHomePage, openArrangeSheet, refreshHomePage, switchHomeTab, type HomePageModel, type HomeTabId } from "./index.ts";
+import {
+  buildHomePage,
+  openArrangeSheet,
+  patchHomeTaskScheduleBlock,
+  refreshHomePage,
+  replaceHomeTasks,
+  switchHomeTab,
+  type HomePageModel,
+  type HomeTabId,
+  type HomeTaskCard,
+} from "./index.ts";
 
 type ArrangeChatApiClient = {
   createArrangeConversation(): Promise<ArrangeConversationDetailResponse>;
@@ -43,7 +57,17 @@ type ArrangeChatApiClient = {
   }>;
 };
 
-type HomePageApiClient = ArrangeFlowApiClient & Partial<ArrangeChatApiClient>;
+type TasksReadApiClient = {
+  listTasks(): Promise<TasksListResponse>;
+  getTask(taskId: string): Promise<TaskDetailResponse>;
+  updateTaskScheduleBlock(
+    taskId: string,
+    blockId: string,
+    payload: { startAt: string; endAt: string },
+  ): Promise<TaskDetailResponse>;
+};
+
+type HomePageApiClient = ArrangeFlowApiClient & Partial<ArrangeChatApiClient & TasksReadApiClient>;
 
 export interface HomePageRuntimeState {
   home: HomePageModel;
@@ -65,6 +89,8 @@ export interface HomePageRuntimeState {
   currentConversationId: string | null;
   arrangeMessages: ArrangeConversationMessageRecord[];
   arrangeSnapshot: ArrangeConversationSnapshot | null;
+  taskDetailVisible: boolean;
+  selectedTaskId: string | null;
 }
 
 export interface HomePageRuntimeOptions {
@@ -75,6 +101,7 @@ export interface HomePageRuntimeOptions {
 
 export interface HomePageRuntime {
   state: HomePageRuntimeState;
+  loadTasks(): Promise<void>;
   clearFeedback(): void;
   setDraftText(value: string): void;
   setAnswerText(value: string): void;
@@ -88,6 +115,14 @@ export interface HomePageRuntime {
   closeArrangeSheet(): void;
   openAttachmentPicker(): void;
   closeAttachmentPicker(): void;
+  openTaskDetail(taskId: string): Promise<void> | void;
+  closeTaskDetail(): void;
+  previewTaskScheduleBlock(taskId: string, blockId: string, payload: { startAt: string; endAt: string }): void;
+  updateTaskScheduleBlock(
+    taskId: string,
+    blockId: string,
+    payload: { startAt: string; endAt: string },
+  ): Promise<TaskDetailResponse>;
   submitAttachment(attachment: ArrangeAttachment): Promise<{ stage: ArrangeFlowStage }>;
   submitDraft(): Promise<{ stage: ArrangeFlowStage }>;
   submitClarification(answerText?: string): Promise<{ stage: ArrangeFlowStage }>;
@@ -118,6 +153,8 @@ function createInitialState(
     currentConversationId: null,
     arrangeMessages: [],
     arrangeSnapshot: null,
+    taskDetailVisible: false,
+    selectedTaskId: null,
   };
 }
 
@@ -131,6 +168,20 @@ function supportsArrangeChat(apiClient: HomePageApiClient): apiClient is HomePag
   );
 }
 
+function supportsTasksList(apiClient: HomePageApiClient): apiClient is HomePageApiClient & Pick<TasksReadApiClient, "listTasks"> {
+  return typeof apiClient.listTasks === "function";
+}
+
+function supportsTaskDetail(apiClient: HomePageApiClient): apiClient is HomePageApiClient & Pick<TasksReadApiClient, "getTask"> {
+  return typeof apiClient.getTask === "function";
+}
+
+function supportsTaskScheduleBlockUpdate(
+  apiClient: HomePageApiClient,
+): apiClient is HomePageApiClient & Pick<TasksReadApiClient, "updateTaskScheduleBlock"> {
+  return typeof apiClient.updateTaskScheduleBlock === "function";
+}
+
 function mapHistoryEntry(record: ArrangeConversationRecord): ArrangeHistoryEntry {
   return {
     id: record.id,
@@ -140,20 +191,34 @@ function mapHistoryEntry(record: ArrangeConversationRecord): ArrangeHistoryEntry
   };
 }
 
+function normalizeRuntimeErrorMessage(error: unknown, apiBaseUrl: string) {
+  const fallbackMessage = error instanceof Error ? error.message : "Request failed";
+  if (!fallbackMessage.includes("request:fail")) {
+    return fallbackMessage;
+  }
+
+  let hostname = "";
+  try {
+    hostname = new URL(apiBaseUrl).hostname;
+  } catch {
+    hostname = "";
+  }
+
+  if (hostname === "127.0.0.1" || hostname === "localhost" || hostname === "::1") {
+    return `无法连接本地 API（${apiBaseUrl}）。请确认开发服务已启动；如果当前运行在手机或独立模拟环境，请改成电脑的局域网地址。`;
+  }
+
+  return `无法连接 API（${apiBaseUrl}）。请检查服务是否已启动，以及当前网络是否可以访问该地址。`;
+}
+
 function buildThreadItemsFromMessages(
   messages: ArrangeConversationMessageRecord[],
   snapshot: ArrangeConversationSnapshot | null,
 ): ArrangeThreadItem[] {
-  if (!messages.length) {
-    return [
-      {
-        id: "thread-hero",
-        kind: "hero",
-        title: "开始规划",
-        body: "直接像和 Codex 一样说出你的任务，糖蟹会持续理解、拆分和调整安排。",
-        accent: "soft",
-      },
-    ];
+  const confirmedBlocks = snapshot?.proposedBlocks.filter((block) => block.status === "confirmed") ?? [];
+
+  if (!messages.length && !snapshot?.readyToConfirm && !confirmedBlocks.length) {
+    return [];
   }
 
   const threadItems = messages.map<ArrangeThreadItem>((message) => ({
@@ -168,24 +233,21 @@ function buildThreadItemsFromMessages(
     body: message.content,
   }));
 
-  if (snapshot?.readyToConfirm) {
+  if (snapshot?.readyToConfirm && !confirmedBlocks.length) {
     threadItems.push({
       id: "thread-ready",
       kind: "ready",
       title: snapshot.title ?? "可以确认安排",
       body: snapshot.summary ?? "当前安排已经整理完成，可以继续修改或直接确认。",
+      actionLabel: "安排",
     });
   }
 
-  if (snapshot?.proposedBlocks?.some((block) => block.status === "confirmed")) {
+  if (confirmedBlocks.length) {
     threadItems.push({
-      id: "thread-confirmed",
-      kind: "confirmed",
-      title: "已确认排期",
-      body: snapshot.proposedBlocks
-        .filter((block) => block.status === "confirmed")
-        .map((block) => `${block.title} ${block.startAt} - ${block.endAt}`)
-        .join("\n"),
+      id: "thread-arranged-divider",
+      kind: "status_divider",
+      title: "已安排",
     });
   }
 
@@ -214,6 +276,193 @@ function buildPendingThreadItems(
   ];
 }
 
+function toSystemDateId(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function formatRelativeDeadlineLabel(value: string | null) {
+  if (!value) {
+    return "待确认";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "待确认";
+  }
+
+  const current = new Date();
+  const currentDayId = toSystemDateId(current);
+  const targetDayId = toSystemDateId(date);
+  const tomorrow = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
+  const tomorrowDayId = toSystemDateId(tomorrow);
+
+  if (targetDayId === currentDayId) {
+    return "今天";
+  }
+
+  if (targetDayId === tomorrowDayId) {
+    return "明天";
+  }
+
+  if (date.getFullYear() > current.getFullYear()) {
+    return "明年";
+  }
+
+  return `${date.getMonth() + 1}.${date.getDate()}`;
+}
+
+function formatMinutesLabel(value: string) {
+  const date = new Date(value);
+  return `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+function formatDurationLabel(minutes: number | null, scheduleBlocks: TaskScheduleBlockResponse[]) {
+  const scheduledMinutes = scheduleBlocks.reduce((total, block) => total + Math.max(0, block.durationMinutes), 0);
+  if (scheduledMinutes > 0) {
+    if (scheduledMinutes >= 60 && scheduledMinutes % 60 === 0) {
+      return `${Math.round(scheduledMinutes / 60)} 小时`;
+    }
+    return `${scheduledMinutes} 分钟`;
+  }
+
+  if (typeof minutes === "number" && minutes > 0) {
+    if (minutes >= 60 && minutes % 60 === 0) {
+      return `${Math.round(minutes / 60)} 小时`;
+    }
+    return `${minutes} 分钟`;
+  }
+
+  return "待估算";
+}
+
+function formatPriorityLabel(task: TaskRecordResponse) {
+  if (typeof task.priorityRank === "number" && task.priorityRank > 0) {
+    return `P${task.priorityRank}`;
+  }
+
+  if (typeof task.priorityScore === "number") {
+    if (task.priorityScore >= 80) {
+      return "P1";
+    }
+    if (task.priorityScore >= 60) {
+      return "P2";
+    }
+  }
+
+  return "P3";
+}
+
+function mapCategory(task: TaskRecordResponse) {
+  switch (task.status) {
+    case "scheduled":
+      return { categoryId: "scheduled", categoryTitle: "已安排" };
+    case "needs_info":
+      return { categoryId: "needs_info", categoryTitle: "待补信息" };
+    case "done":
+      return { categoryId: "done", categoryTitle: "已完成" };
+    case "overdue":
+      return { categoryId: "overdue", categoryTitle: "已逾期" };
+    default:
+      return { categoryId: "todo", categoryTitle: "待安排" };
+  }
+}
+
+function mapSourceLabel(sourceType: TaskRecordResponse["sourceType"]) {
+  if (sourceType === "image") {
+    return "图片导入";
+  }
+
+  if (sourceType === "doc") {
+    return "文档导入";
+  }
+
+  return "文本输入";
+}
+
+function mapExecutionPlan(scheduleBlocks: TaskScheduleBlockResponse[]) {
+  if (!scheduleBlocks.length) {
+    return [{ id: "task-plan-pending", label: "等待生成具体排期", statusLabel: "待安排" }];
+  }
+
+  return scheduleBlocks
+    .slice()
+    .sort((left, right) => left.startAt.localeCompare(right.startAt))
+    .map((block) => ({
+      id: `${block.id}-plan`,
+      label: `${formatRelativeDeadlineLabel(block.startAt)} ${formatMinutesLabel(block.startAt)} - ${formatMinutesLabel(block.endAt)}`,
+      statusLabel: "已排期",
+    }));
+}
+
+function mapSuggestions(task: TaskRecordResponse, scheduleBlocks: TaskScheduleBlockResponse[]) {
+  if (task.status === "needs_info") {
+    return ["先补充 deadline 和预计时长，再生成更稳定的排期。"];
+  }
+
+  if (task.status === "done") {
+    return ["保留这次执行记录，后续复盘时直接复用。"];
+  }
+
+  if (scheduleBlocks.length > 0) {
+    return ["先按当前排期推进，如有冲突再重新安排。"];
+  }
+
+  return ["先确认优先级和截止时间，再安排时间块。"];
+}
+
+function mapScheduleSegments(scheduleBlocks: TaskScheduleBlockResponse[]) {
+  return scheduleBlocks
+    .slice()
+    .sort((left, right) => left.startAt.localeCompare(right.startAt))
+    .map((block) => ({
+      id: block.id,
+      startAt: block.startAt,
+      endAt: block.endAt,
+      label: `${formatMinutesLabel(block.startAt)}-${formatMinutesLabel(block.endAt)}`,
+    }));
+}
+
+function mapTaskRecordToHomeTask(
+  task: TaskRecordResponse,
+  scheduleBlocks: TaskScheduleBlockResponse[],
+): HomeTaskCard {
+  const scheduleSegments = mapScheduleSegments(scheduleBlocks);
+  const firstSegment = scheduleSegments[0];
+  const lastSegment = scheduleSegments[scheduleSegments.length - 1];
+  const anchorTime = task.deadlineAt ?? task.updatedAt;
+  const category = mapCategory(task);
+
+  return {
+    id: task.id,
+    title: task.title,
+    summary: task.description?.trim() || "这是一个待补充的任务说明。",
+    startAt: firstSegment?.startAt ?? anchorTime,
+    endAt: lastSegment?.endAt ?? anchorTime,
+    deadlineAt: task.deadlineAt ?? anchorTime,
+    status: task.status as HomeTaskCard["status"],
+    deadlineLabel: formatRelativeDeadlineLabel(task.deadlineAt),
+    durationLabel: formatDurationLabel(task.estimatedDurationMinutes, scheduleBlocks),
+    priorityLabel: formatPriorityLabel(task),
+    importanceReason: task.importanceReason ?? "待补充优先级原因",
+    categoryId: category.categoryId,
+    categoryTitle: category.categoryTitle,
+    sourceLabel: mapSourceLabel(task.sourceType),
+    executionPlan: mapExecutionPlan(scheduleBlocks),
+    suggestions: mapSuggestions(task, scheduleBlocks),
+    scheduleSegments,
+  };
+}
+
+function sortHomeTasks(tasks: HomeTaskCard[]) {
+  return tasks.slice().sort((left, right) => {
+    if (left.scheduleSegments.length !== right.scheduleSegments.length) {
+      return right.scheduleSegments.length - left.scheduleSegments.length;
+    }
+
+    return left.deadlineAt.localeCompare(right.deadlineAt);
+  });
+}
+
 export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): HomePageRuntime {
   const runtimeConfig = resolveMiniProgramRuntimeConfig(options.runtimeConfig);
   const state = createInitialState(runtimeConfig, options.initialHome);
@@ -227,6 +476,10 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
       baseUrl: runtimeConfig.apiBaseUrl,
       transport,
     });
+
+  if (!options.initialHome && supportsTasksList(apiClient)) {
+    state.home = buildHomePage({ tasks: [] });
+  }
 
   function rebuildApiClient(nextBaseUrl: string) {
     if (options.apiClient) {
@@ -289,6 +542,23 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
     );
   }
 
+  function applyTaskRecords(records: Array<TaskRecordResponse & { scheduleBlocks: TaskScheduleBlockResponse[] }>) {
+    replaceHomeTasks(
+      state.home,
+      sortHomeTasks(records.map((record) => mapTaskRecordToHomeTask(record, record.scheduleBlocks))),
+    );
+  }
+
+  function mergeTaskRecord(task: TaskRecordResponse, scheduleBlocks: TaskScheduleBlockResponse[]) {
+    const nextTask = mapTaskRecordToHomeTask(task, scheduleBlocks);
+    const nextTasks = sortHomeTasks(
+      state.home.tasks.some((item) => item.id === nextTask.id)
+        ? state.home.tasks.map((item) => (item.id === nextTask.id ? nextTask : item))
+        : [...state.home.tasks, nextTask],
+    );
+    replaceHomeTasks(state.home, nextTasks);
+  }
+
   async function loadConversationHistory() {
     if (!supportsArrangeChat(apiClient)) {
       return state.home.arrangeSheet.history;
@@ -341,10 +611,19 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
     } catch (error) {
       setState({
         loading: false,
-        error: error instanceof Error ? error.message : "Request failed",
+        error: normalizeRuntimeErrorMessage(error, state.runtimeConfig.apiBaseUrl),
       });
       throw error;
     }
+  }
+
+  async function loadTasksFromApi() {
+    if (!supportsTasksList(apiClient)) {
+      return;
+    }
+
+    const result = await apiClient.listTasks();
+    applyTaskRecords(result.items);
   }
 
   function buildLegacyThreadItems(input: {
@@ -357,13 +636,7 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
     const threadItems: ArrangeThreadItem[] = [];
 
     if (input.stage === "idle" && !input.draftText && !input.attachment) {
-      threadItems.push({
-        id: "thread-hero",
-        kind: "hero",
-        title: "开始规划",
-        body: "把任务丢给糖蟹，它会自动追问 deadline、时长和开始时间。",
-        accent: "soft",
-      });
+      return threadItems;
     }
 
     if (input.draftText) {
@@ -400,15 +673,15 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
         kind: "ready",
         title: "信息已齐",
         body: "可以确认排期并生成提醒了。",
+        actionLabel: "安排",
       });
     }
 
     if (input.confirmedBlocks?.length) {
       threadItems.push({
-        id: "thread-confirmed",
-        kind: "confirmed",
-        title: "已确认排期",
-        body: input.confirmedBlocks.map((block) => `${block.title} ${block.startAt} - ${block.endAt}`).join("\n"),
+        id: "thread-arranged-divider",
+        kind: "status_divider",
+        title: "已安排",
       });
     }
 
@@ -417,6 +690,11 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
 
   return {
     state,
+    async loadTasks() {
+      await run(async () => {
+        await loadTasksFromApi();
+      });
+    },
     clearFeedback() {
       state.error = null;
       state.notice = null;
@@ -474,7 +752,6 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
         const history = await loadConversationHistory();
         state.sheetOpen = true;
         state.arrangeTab = "arrange";
-        state.notice = "已切换到新会话";
         syncArrangeSheetFromConversation(history);
       });
     },
@@ -504,6 +781,48 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
     closeAttachmentPicker() {
       state.attachmentPickerOpen = false;
     },
+    async openTaskDetail(taskId: string) {
+      state.selectedTaskId = taskId;
+      state.taskDetailVisible = true;
+
+      if (!supportsTaskDetail(apiClient)) {
+        return;
+      }
+
+      await run(async () => {
+        const result = await apiClient.getTask(taskId);
+        mergeTaskRecord(result.task, result.scheduleBlocks);
+      });
+    },
+    closeTaskDetail() {
+      state.taskDetailVisible = false;
+      state.selectedTaskId = null;
+    },
+    previewTaskScheduleBlock(taskId, blockId, payload) {
+      replaceHomeTasks(
+        state.home,
+        patchHomeTaskScheduleBlock(state.home.tasks, taskId, blockId, payload),
+      );
+    },
+    async updateTaskScheduleBlock(taskId, blockId, payload) {
+      if (!supportsTaskScheduleBlockUpdate(apiClient)) {
+        throw new Error("当前模式暂不支持更新时间块");
+      }
+
+      return run(async () => {
+        try {
+          const result = await apiClient.updateTaskScheduleBlock(taskId, blockId, payload);
+          mergeTaskRecord(result.task, result.scheduleBlocks);
+          state.notice = "任务时间已更新";
+          return result;
+        } catch (error) {
+          if (supportsTasksList(apiClient)) {
+            await loadTasksFromApi();
+          }
+          throw error;
+        }
+      });
+    },
     async submitAttachment(attachment: ArrangeAttachment) {
       return run(async () => {
         const result = await flow.submitAttachment(attachment);
@@ -530,9 +849,12 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
         return { stage: state.stage };
       }
 
-      if (supportsArrangeChat(apiClient)) {
-        const pendingDraft = state.draftText.trim();
+      const pendingDraft = state.draftText.trim();
+      if (!pendingDraft) {
+        return { stage: state.stage };
+      }
 
+      if (supportsArrangeChat(apiClient)) {
         return run(async () => {
           state.sheetOpen = true;
           state.draftText = "";
@@ -556,7 +878,6 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
           state.arrangeMessages = [...state.arrangeMessages, result.userMessage, result.assistantMessage];
           state.arrangeSnapshot = result.snapshot;
           state.stage = result.snapshot.readyToConfirm ? "ready_to_schedule" : "idle";
-          state.notice = "糖蟹已回复";
           syncArrangeSheetFromConversation(refreshedHistory);
           return { stage: state.stage };
         });
@@ -568,7 +889,6 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
         state.stage = result.stage;
         state.nextQuestion = result.nextQuestion;
         state.confirmedBlocks = result.confirmedBlocks;
-        state.notice = result.stage === "clarifying" ? "已进入追问" : "任务已进入排期";
         syncArrangeSheet(
           buildLegacyThreadItems({
             draftText: state.draftText,
@@ -581,11 +901,19 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
       });
     },
     async submitClarification(answerText = state.answerText) {
+      if (state.loading) {
+        return { stage: state.stage };
+      }
+
+      const nextAnswerText = answerText.trim();
+      if (!nextAnswerText) {
+        return { stage: state.stage };
+      }
+
       return run(async () => {
-        const result = await flow.reply(answerText);
+        const result = await flow.reply(nextAnswerText);
         state.stage = result.stage;
         state.nextQuestion = result.nextQuestion;
-        state.notice = "补充信息已提交";
         syncArrangeSheet(
           buildLegacyThreadItems({
             draftText: state.draftText,
@@ -599,6 +927,10 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
       });
     },
     async proposeSchedule() {
+      if (state.loading) {
+        return { stage: state.stage };
+      }
+
       if (supportsArrangeChat(apiClient)) {
         return run(async () => {
           if (!state.currentConversationId) {
@@ -610,8 +942,12 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
           state.stage = "confirmed";
           state.confirmedBlocks = result.confirmedBlocks;
           state.arrangeSnapshot = result.snapshot;
-          refreshHomePage(state.home, result.confirmedBlocks);
-          state.notice = "排期已确认并已刷新首页";
+          if (supportsTasksList(apiClient)) {
+            await loadTasksFromApi();
+          } else {
+            refreshHomePage(state.home, result.confirmedBlocks);
+          }
+          state.notice = state.sheetOpen ? null : "排期已确认并已刷新首页";
           syncArrangeSheetFromConversation(history);
           return { stage: state.stage };
         });

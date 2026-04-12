@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import type {
   ConfirmedBlockRecord,
   CreateConfirmedBlockInput,
+  UpdateConfirmedBlockInput,
   SchedulingRepository,
 } from "./scheduling-repository.ts";
 
@@ -107,6 +108,49 @@ export class PrismaSchedulingRepository implements SchedulingRepository {
           status: "confirmed",
         }),
       );
+    });
+  }
+
+  async updateConfirmedBlock(input: UpdateConfirmedBlockInput) {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.scheduleBlock.findFirst({
+        where: {
+          id: input.blockId,
+          taskId: input.taskId,
+          status: "confirmed",
+        },
+        include: {
+          task: {
+            select: {
+              title: true,
+            },
+          },
+        },
+      });
+
+      if (!existing) {
+        throw new Error(`Confirmed schedule block not found: ${input.blockId}`);
+      }
+
+      const updated = await tx.scheduleBlock.update({
+        where: { id: input.blockId },
+        data: {
+          startAt: input.startAt,
+          endAt: input.endAt,
+        },
+        include: {
+          task: {
+            select: {
+              title: true,
+            },
+          },
+        },
+      });
+
+      return toConfirmedBlockRecord({
+        ...updated,
+        status: "confirmed",
+      });
     });
   }
 }

@@ -126,5 +126,21 @@ export function createMiniProgramApiClient(options) {
         method: "POST",
       });
     },
+    listTasks() {
+      return requestJson(fetchImpl, transport, options.baseUrl, "/tasks", {
+        method: "GET",
+      });
+    },
+    getTask(taskId) {
+      return requestJson(fetchImpl, transport, options.baseUrl, `/tasks/${taskId}`, {
+        method: "GET",
+      });
+    },
+    updateTaskScheduleBlock(taskId, blockId, payload) {
+      return requestJson(fetchImpl, transport, options.baseUrl, `/tasks/${taskId}/schedule-blocks/${blockId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+    },
   };
 }

@@ -5,150 +5,365 @@
 
   <view class="workspace">
     <view class="workspace-card">
-      <view class="tab-strip">
-        <view
-          wx:for="{{home.tabs}}"
-          wx:for-item="tab"
-          wx:key="id"
-          class="tab-item {{activeTab === tab.id ? 'tab-item-active' : ''}}"
-          data-tab-id="{{tab.id}}"
-          bindtap="onTapTab"
-        >
-          <text>{{tab.label}}</text>
+      <view class="surface-shell">
+        <view class="primary-tabs primary-tabs-floating">
+          <view
+            wx:for="{{home.tabs}}"
+            wx:for-item="tab"
+            wx:key="id"
+            class="primary-tab {{activeTab === tab.id ? 'primary-tab-active' : ''}}"
+            data-tab-id="{{tab.id}}"
+            bindtap="onTapTab"
+          >
+            <text>{{tab.label}}</text>
+          </view>
         </view>
-      </view>
 
-      <view wx:if="{{activeTab === 'schedule'}}" class="timeline-panel">
-        <view wx:if="{{home.timelineView.blocks.length}}" class="timeline-stage">
-          <view class="timeline-stage-head">
-            <view class="timeline-gutter-head">
-              <view class="date-rail-timezone">
-                <text class="date-rail-timezone-label">{{home.timelineView.timezoneLabel}}</text>
+        <view wx:if="{{activeTab === 'schedule'}}" class="timeline-panel surface-panel">
+          <view
+            wx:if="{{home.surfaceStates.schedule.scheduleSummary}}"
+            class="schedule-summary {{scheduleSummaryExpanded ? 'schedule-summary-expanded' : ''}}"
+            bindtap="onToggleScheduleSummary"
+          >
+            <view class="schedule-summary-row">
+              <view class="schedule-summary-heading">
+                <view class="schedule-summary-metrics">
+                  <view
+                    wx:for="{{home.surfaceStates.schedule.scheduleSummary.compactMetrics}}"
+                    wx:for-item="metric"
+                    wx:key="id"
+                    class="summary-metric"
+                  >
+                    <text class="summary-metric-value">{{metric.value}}</text>
+                    <text class="summary-metric-label">{{metric.label}}</text>
+                  </view>
+                </view>
+              </view>
+
+              <view wx:if="{{home.surfaceStates.schedule.scheduleSummary.expandedMetrics.length}}" class="schedule-summary-toggle">
+                <view class="schedule-summary-toggle-icon {{scheduleSummaryExpanded ? 'schedule-summary-toggle-icon-expanded' : ''}}"></view>
               </view>
             </view>
 
-            <view class="timeline-scroll-head">
-              <view class="timeline-scroll-head-inner" style="transform: translateX(-{{timelineHeaderOffsetPx}}px);">
-                <view class="date-rail">
-                  <view
-                    wx:for="{{home.timelineView.days}}"
-                    wx:for-item="day"
-                    wx:key="id"
-                    class="date-rail-day {{day.isActive ? 'date-rail-day-active' : ''}} {{day.isPast ? 'date-rail-day-past' : ''}}"
-                  >
-                    <text class="date-rail-week">{{day.weekLabel}}</text>
-                    <text class="date-rail-date">{{day.dateLabel}}</text>
-                  </view>
-
-                  <view class="date-rail-icon">
-                    <text class="date-rail-icon-mark">▣</text>
-                  </view>
-                </view>
+            <view wx:if="{{scheduleSummaryExpanded && home.surfaceStates.schedule.scheduleSummary.expandedMetrics.length}}" class="schedule-summary-detail">
+              <view
+                wx:for="{{home.surfaceStates.schedule.scheduleSummary.expandedMetrics}}"
+                wx:for-item="metric"
+                wx:key="id"
+                class="summary-metric summary-metric-expanded"
+              >
+                <text class="summary-metric-value">{{metric.value}}</text>
+                <text class="summary-metric-label">{{metric.label}}</text>
               </view>
             </view>
           </view>
 
-          <scroll-view
-            class="timeline-viewport"
-            scroll-y="true"
-            enhanced="true"
-            scroll-top="{{timelineScrollTop}}"
-            show-scrollbar="false"
-          >
-            <view class="timeline-stage-body">
-              <view class="timeline-gutter-shell">
-                <view class="timeline-gutter" style="height: {{home.timelineView.totalHeightRpx}}rpx;">
+          <view wx:if="{{home.timelineView.blocks.length}}" class="timeline-stage">
+            <view class="timeline-stage-head">
+              <view class="timeline-gutter-head">
+                <view class="date-rail-control">
                   <view
-                    wx:for="{{home.timelineView.timeSlots}}"
-                    wx:for-item="slot"
-                    wx:key="id"
-                    class="timeline-hour"
-                    style="top: {{slot.topRpx}}rpx;"
+                    class="timeline-day-range-trigger"
+                    bindtap="onToggleTimelineDayRangeMenu"
+                    hover-class="timeline-day-range-trigger-hover"
+                    hover-stay-time="80"
                   >
-                    <text class="timeline-hour-label">{{slot.label}}</text>
+                    <view class="timeline-day-range-icon">
+                      <view class="timeline-day-range-icon-rings">
+                        <view class="timeline-day-range-icon-ring"></view>
+                        <view class="timeline-day-range-icon-ring"></view>
+                      </view>
+                      <view class="timeline-day-range-icon-grid">
+                        <view class="timeline-day-range-icon-dot"></view>
+                        <view class="timeline-day-range-icon-dot"></view>
+                        <view class="timeline-day-range-icon-dot"></view>
+                        <view class="timeline-day-range-icon-dot"></view>
+                      </view>
+                    </view>
+                  </view>
+
+                  <view wx:if="{{timelineDayRangeMenuOpen}}" class="timeline-day-range-menu">
+                    <view
+                      wx:for="{{home.timelineView.visibleDayCountOptions}}"
+                      wx:for-item="option"
+                      wx:key="value"
+                      class="timeline-day-range-option {{option.isActive ? 'timeline-day-range-option-active' : ''}}"
+                      data-day-count="{{option.value}}"
+                      bindtap="onSelectTimelineDayRange"
+                    >
+                      <text class="timeline-day-range-option-label">{{option.label}}</text>
+                    </view>
                   </view>
                 </view>
               </view>
 
-              <scroll-view
-                class="timeline-scroll"
-                scroll-x="true"
-                enhanced="true"
-                scroll-left="{{timelineScrollLeft}}"
-                show-scrollbar="false"
-                bindscroll="onTimelineHorizontalScroll"
-              >
-                <view class="timeline-scroll-inner">
-                  <view class="timeline-days" style="height: {{home.timelineView.totalHeightRpx}}rpx;">
+              <view class="timeline-scroll-head">
+                <view class="timeline-scroll-head-inner" style="transform: translateX(-{{timelineHeaderOffsetPx}}px);">
+                  <view class="date-rail">
                     <view
+                      wx:for="{{home.timelineView.days}}"
+                      wx:for-item="day"
+                      wx:key="id"
+                      class="date-rail-day {{day.isActive ? 'date-rail-day-active' : ''}} {{day.isPast ? 'date-rail-day-past' : ''}}"
+                      style="width: {{home.timelineView.dayColumnWidthRpx}}rpx;"
+                    >
+                      <text class="date-rail-week">{{day.weekLabel}}</text>
+                      <text class="date-rail-date">{{day.dateLabel}}</text>
+                    </view>
+                  </view>
+                </view>
+              </view>
+            </view>
+
+            <scroll-view
+              class="timeline-viewport"
+              scroll-y="{{!timelineEditingBlockId}}"
+              enhanced="true"
+              scroll-top="{{timelineScrollTop}}"
+              show-scrollbar="false"
+            >
+              <view class="timeline-stage-body">
+                <view class="timeline-gutter-shell">
+                  <view class="timeline-gutter" style="height: {{home.timelineView.totalHeightRpx}}rpx;">
+                    <view
+                      wx:for="{{home.timelineView.timeSlots}}"
+                      wx:for-item="slot"
+                      wx:key="id"
+                      class="timeline-hour"
+                      style="top: {{slot.topRpx}}rpx;"
+                    >
+                      <text class="timeline-hour-label">{{slot.label}}</text>
+                    </view>
+                  </view>
+                </view>
+
+                <scroll-view
+                  class="timeline-scroll"
+                  scroll-x="{{!timelineEditingBlockId}}"
+                  enhanced="true"
+                  scroll-left="{{timelineScrollLeft}}"
+                  show-scrollbar="false"
+                  bindscroll="onTimelineHorizontalScroll"
+                >
+                  <view class="timeline-scroll-inner">
+                    <view class="timeline-days" style="height: {{home.timelineView.totalHeightRpx}}rpx;">
+                      <view
                       wx:for="{{home.timelineView.days}}"
                       wx:for-item="day"
                       wx:key="id"
                       id="timeline-day-{{day.id}}"
                       class="timeline-day-column {{day.isPast ? 'timeline-day-column-past' : ''}}"
+                      style="width: {{home.timelineView.dayColumnWidthRpx}}rpx;"
                     >
-                      <view
-                        wx:for="{{home.timelineView.timeSlots}}"
-                        wx:for-item="slot"
-                        wx:key="id"
-                        class="timeline-grid-line"
-                        style="top: {{slot.topRpx}}rpx;"
-                      ></view>
+                        <view
+                          wx:for="{{home.timelineView.timeSlots}}"
+                          wx:for-item="slot"
+                          wx:key="id"
+                          class="timeline-grid-line"
+                          style="top: {{slot.topRpx}}rpx;"
+                        ></view>
 
-                      <view
-                        wx:for="{{day.blocks}}"
-                        wx:for-item="block"
-                        wx:key="id"
-                        class="timeline-block timeline-block-{{block.status}} {{day.isPast ? 'timeline-block-past' : ''}}"
-                        style="top: {{block.topRpx}}rpx; height: {{block.heightRpx}}rpx;"
-                      >
-                        <view class="timeline-block-body">
-                          <view class="timeline-block-head">
-                            <text class="timeline-block-title">{{block.title}}</text>
+                        <view
+                          wx:for="{{day.blocks}}"
+                          wx:for-item="block"
+                          wx:key="id"
+                          class="timeline-block timeline-block-{{block.status}} {{day.isPast ? 'timeline-block-past' : ''}} {{timelineEditingBlockId === block.scheduleBlockId ? 'timeline-block-editing' : ''}}"
+                          data-task-id="{{block.taskId}}"
+                          data-block-id="{{block.scheduleBlockId}}"
+                          bindtap="onOpenTaskDetail"
+                          bindtouchstart="onTimelineBlockTouchStart"
+                          bindtouchmove="onTimelineBlockTouchMove"
+                          bindtouchend="onTimelineBlockTouchEnd"
+                          bindtouchcancel="onTimelineBlockTouchCancel"
+                          hover-class="timeline-block-hover"
+                          hover-stay-time="80"
+                          style="left: {{block.leftRpx}}rpx; right: {{block.rightRpx}}rpx; top: {{block.topRpx}}rpx; height: {{block.heightRpx}}rpx;"
+                        >
+                          <view
+                            wx:if="{{timelineEditingBlockId === block.scheduleBlockId}}"
+                            class="timeline-block-resize timeline-block-resize-top {{timelineEditingHandle === 'top' ? 'timeline-block-resize-active' : ''}}"
+                            data-task-id="{{block.taskId}}"
+                            data-block-id="{{block.scheduleBlockId}}"
+                            data-resize-handle="top"
+                            catchtouchstart="onTimelineResizeHandleTouchStart"
+                            catchtouchmove="onTimelineResizeHandleTouchMove"
+                            catchtouchend="onTimelineResizeHandleTouchEnd"
+                            catchtouchcancel="onTimelineResizeHandleTouchCancel"
+                          ></view>
+                          <view class="timeline-block-body">
+                            <view class="timeline-block-head">
+                              <text class="timeline-block-title">{{block.title}}</text>
+                            </view>
+                            <text class="timeline-block-copy timeline-block-time">{{block.startLabel}} - {{block.endLabel}}</text>
+                            <text wx:if="{{block.deadlineLabel}}" class="timeline-block-copy timeline-block-deadline">Deadline · {{block.deadlineLabel}}</text>
                           </view>
-                          <text class="timeline-block-copy">{{block.startLabel}} - {{block.endLabel}}</text>
-                          <text wx:if="{{block.deadlineLabel}}" class="timeline-block-copy">Deadline · {{block.deadlineLabel}}</text>
+                          <view
+                            wx:if="{{timelineEditingBlockId === block.scheduleBlockId}}"
+                            class="timeline-block-resize timeline-block-resize-bottom {{timelineEditingHandle === 'bottom' ? 'timeline-block-resize-active' : ''}}"
+                            data-task-id="{{block.taskId}}"
+                            data-block-id="{{block.scheduleBlockId}}"
+                            data-resize-handle="bottom"
+                            catchtouchstart="onTimelineResizeHandleTouchStart"
+                            catchtouchmove="onTimelineResizeHandleTouchMove"
+                            catchtouchend="onTimelineResizeHandleTouchEnd"
+                            catchtouchcancel="onTimelineResizeHandleTouchCancel"
+                          ></view>
                         </view>
                       </view>
                     </view>
                   </view>
+                </scroll-view>
+              </view>
+            </scroll-view>
+          </view>
+
+          <view wx:else class="timeline-empty">
+            <text class="timeline-empty-title">暂无排期</text>
+            <text class="timeline-empty-copy">{{scheduleEmptyState}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{activeTab === 'kanban'}}" class="kanban-panel surface-panel">
+          <view class="control-strip control-strip-compact">
+            <view class="control-strip-main">
+              <view class="control-chip control-chip-active">
+                <text>看板</text>
+              </view>
+              <text class="control-caption">{{home.surfaceStates.kanban.header.subtitle}}</text>
+            </view>
+
+            <view class="control-strip-meta">
+              <view class="control-pill">
+                <text>{{home.kanbanView.groups.length}} 组</text>
+              </view>
+              <view class="control-pill">
+                <text>{{home.tasks.length}} 项</text>
+              </view>
+            </view>
+          </view>
+
+          <view wx:if="{{home.kanbanView.groups.length}}" class="task-board-groups">
+            <view wx:for="{{home.kanbanView.groups}}" wx:for-item="group" wx:key="id" class="task-board-group">
+              <view class="task-board-group-head">
+                <text class="task-board-group-title">{{group.title}}</text>
+                <text class="task-board-group-count">{{group.count}}</text>
+              </view>
+
+              <view wx:for="{{group.tasks}}" wx:for-item="task" wx:key="id" class="task-card" data-task-id="{{task.id}}" bindtap="onOpenTaskDetail">
+                <view class="task-card-head">
+                  <text class="task-card-title">{{task.title}}</text>
+                  <text class="task-card-priority">{{task.priorityLabel}}</text>
                 </view>
-              </scroll-view>
+                <text class="task-card-summary">{{task.summary}}</text>
+                <view class="task-card-meta">
+                  <text class="task-card-deadline">{{task.deadlineLabel}}</text>
+                  <text class="task-card-duration">{{task.durationLabel}}</text>
+                </view>
+              </view>
             </view>
-          </scroll-view>
-        </view>
-
-        <view wx:else class="timeline-empty">
-          <text class="timeline-empty-title">暂无排期</text>
-          <text class="timeline-empty-copy">{{scheduleEmptyState}}</text>
-        </view>
-      </view>
-
-      <view wx:else class="kanban-panel">
-        <view class="timeline-panel-head">
-          <view>
-            <text class="timeline-panel-title">{{home.kanbanView.title}}</text>
-            <text class="timeline-panel-copy">{{home.kanbanView.subtitle}}</text>
           </view>
-          <view class="timeline-panel-chip">
-            <text>看板</text>
-          </view>
+
+          <text wx:else class="kanban-column-empty">{{home.kanbanView.emptyState}}</text>
         </view>
 
-        <view class="kanban-columns">
-          <view wx:for="{{home.kanbanView.columns}}" wx:for-item="column" wx:key="id" class="kanban-column">
-            <view class="kanban-column-head">
-              <text class="kanban-column-title">{{column.title}}</text>
-              <text class="kanban-column-count">{{column.count}}</text>
-            </view>
-
-            <view wx:if="{{column.tasks.length}}" class="kanban-chip-list">
-              <view wx:for="{{column.tasks}}" wx:for-item="task" wx:key="id" class="kanban-chip">
-                <text class="kanban-chip-title">{{task.title}}</text>
+        <view wx:if="{{activeTab === 'planning'}}" class="planning-panel surface-panel">
+          <view class="planning-toolbar">
+            <view class="planning-toolbar-main">
+              <view class="planning-range-badge">
+                <text class="planning-range-label">{{home.surfaceStates.planning.header.subtitle}}</text>
               </view>
             </view>
 
-            <text wx:else class="kanban-column-empty">{{kanbanEmptyState}}</text>
+            <view class="planning-period-strip">
+              <view
+                wx:for="{{home.planningView.periods}}"
+                wx:for-item="period"
+                wx:key="id"
+                class="planning-period-chip {{home.planningView.activePeriod === period.id ? 'planning-period-chip-active' : ''}}"
+                data-planning-period="{{period.id}}"
+                bindtap="onSwitchPlanningPeriod"
+              >
+                <text>{{period.label}}</text>
+              </view>
+            </view>
+          </view>
+
+          <view wx:if="{{home.planningView.taskColumns.length}}" class="planning-gantt">
+            <scroll-view
+              class="planning-gantt-viewport"
+              scroll-y="true"
+              scroll-top="{{planningScrollTop}}"
+              bindscroll="onPlanningVerticalScroll"
+              bindscrolltoupper="onPlanningVerticalScrollToUpper"
+              bindscrolltolower="onPlanningVerticalScrollToLower"
+              upper-threshold="120"
+              lower-threshold="120"
+              enhanced="true"
+              show-scrollbar="false"
+            >
+              <view class="planning-gantt-shell">
+                <view class="planning-gantt-axis" style="height: {{home.planningView.totalHeightRpx}}rpx;">
+                  <view
+                    wx:for="{{home.planningView.timeSlots}}"
+                    wx:for-item="slot"
+                    wx:key="id"
+                    class="planning-gantt-axis-slot"
+                    style="top: {{slot.topRpx}}rpx; height: {{slot.heightRpx}}rpx;"
+                  >
+                    <text class="planning-gantt-axis-label">{{slot.label}}</text>
+                  </view>
+                </view>
+
+                <scroll-view
+                  class="planning-gantt-scroll"
+                  scroll-x="true"
+                  enhanced="true"
+                  show-scrollbar="false"
+                  bindscroll="onTimelineHorizontalScroll"
+                >
+                  <view class="planning-gantt-columns" style="height: {{home.planningView.totalHeightRpx}}rpx;">
+                    <view
+                      wx:for="{{home.planningView.taskColumns}}"
+                      wx:for-item="column"
+                      wx:key="id"
+                      class="planning-task-column"
+                    >
+                      <view class="planning-task-column-head">
+                        <text class="planning-task-column-title">{{column.title}}</text>
+                        <text class="planning-task-column-subtitle">{{column.subtitle}}</text>
+                      </view>
+                      <view class="planning-task-track" style="height: {{home.planningView.totalHeightRpx}}rpx;">
+                        <view
+                          wx:for="{{home.planningView.timeSlots}}"
+                          wx:for-item="slot"
+                          wx:key="id"
+                          class="planning-task-grid-line"
+                          style="top: {{slot.topRpx}}rpx;"
+                        ></view>
+
+                        <view
+                          wx:for="{{column.bars}}"
+                          wx:for-item="bar"
+                          wx:key="id"
+                          class="planning-task-bar"
+                          style="top: {{bar.topRpx}}rpx; height: {{bar.heightRpx}}rpx;"
+                        >
+                          <view class="planning-task-bar-body">
+                            <text class="planning-task-bar-title">{{column.title}}</text>
+                            <text class="planning-task-bar-copy">{{bar.label}}</text>
+                          </view>
+                        </view>
+                      </view>
+                    </view>
+                  </view>
+                </scroll-view>
+              </view>
+            </scroll-view>
+          </view>
+
+          <view wx:else class="timeline-empty">
+            <text class="timeline-empty-title">暂无排期</text>
+            <text class="timeline-empty-copy">{{home.planningView.emptyState}}</text>
           </view>
         </view>
       </view>
@@ -181,6 +396,28 @@
         bindtouchend="onArrangeHandleTouchEnd"
       ></view>
 
+      <view class="planner-sheet-header">
+        <view class="planner-sheet-copy">
+          <text class="planner-sheet-title">{{arrangeTab === 'arrange' ? home.arrangeSheet.title : '历史记录'}}</text>
+          <text class="planner-sheet-subtitle">
+            {{arrangeTab === 'arrange' ? home.arrangeSheet.subtitle : '继续最近的安排会话，或回看之前的拆解记录。'}}
+          </text>
+        </view>
+
+        <view
+          wx:if="{{arrangeTab === 'arrange'}}"
+          class="planner-sheet-action"
+          bindtap="onStartNewArrangeConversation"
+        >
+          <text class="planner-sheet-action-plus">+</text>
+          <text class="planner-sheet-action-text">新会话</text>
+        </view>
+
+        <view wx:if="{{arrangeTab === 'history'}}" class="planner-sheet-meta">
+          <text>{{home.arrangeSheet.history.length}} 条会话</text>
+        </view>
+      </view>
+
       <view class="planner-tab-strip">
         <view class="planner-tab-group">
           <view
@@ -194,15 +431,14 @@
             <text>{{tab.label}}</text>
           </view>
         </view>
-
-        <view wx:if="{{arrangeTab === 'arrange'}}" class="planner-new-conversation" bindtap="onStartNewArrangeConversation">
-          <text class="planner-new-conversation-text">+ 新会话</text>
-        </view>
       </view>
 
       <scroll-view class="planner-thread" scroll-y="true" show-scrollbar="false">
         <view wx:if="{{arrangeTab === 'history'}}" class="planner-thread-section">
-          <text class="planner-thread-kicker">历史记录</text>
+          <view class="planner-history-summary-bar">
+            <text class="planner-thread-kicker">最近会话</text>
+            <text class="planner-thread-meta">按最近更新时间排序</text>
+          </view>
           <view
             wx:for="{{home.arrangeSheet.history}}"
             wx:for-item="entry"
@@ -211,24 +447,69 @@
             data-conversation-id="{{entry.id}}"
             bindtap="onOpenArrangeConversation"
           >
+            <view class="planner-history-card-top">
+              <text class="planner-history-pill">安排</text>
+              <text class="planner-history-time">{{entry.updatedAt}}</text>
+            </view>
             <view class="planner-history-head">
               <text class="planner-history-title">{{entry.title}}</text>
-              <text class="planner-history-time">{{entry.updatedAt}}</text>
+              <text class="planner-history-arrow">›</text>
             </view>
             <text class="planner-history-summary">{{entry.summary}}</text>
           </view>
         </view>
 
         <view wx:if="{{arrangeTab === 'arrange'}}" class="planner-conversation">
+          <view wx:if="{{!home.arrangeSheet.threadItems.length && !loading}}" class="planner-empty-state">
+            <view class="planner-empty-card">
+              <text class="planner-empty-kicker">对话式安排</text>
+              <text class="planner-empty-title">告诉糖蟹你的任务，它会帮你拆解并安排时间。</text>
+              <text class="planner-empty-state-copy">把 deadline、预计时长或资料上下文一起发过来，会更快进入排期。</text>
+              <view class="planner-empty-chip-row">
+                <text class="planner-empty-chip">周五前交论文初稿</text>
+                <text class="planner-empty-chip">今晚补 2 小时</text>
+                <text class="planner-empty-chip">附上截图或文档</text>
+              </view>
+            </view>
+          </view>
+
           <view
             wx:for="{{home.arrangeSheet.threadItems}}"
             wx:for-item="item"
             wx:key="id"
             class="planner-message planner-message-{{item.kind}}"
           >
-            <text wx:if="{{item.kind !== 'user_input'}}" class="planner-message-title">{{item.title}}</text>
-            <text wx:if="{{item.attachmentName}}" class="planner-message-attachment">{{item.attachmentName}}</text>
-            <view wx:if="{{item.body}}" class="planner-message-body">{{item.body}}</view>
+            <view wx:if="{{item.kind === 'status_divider'}}" class="planner-thread-divider">
+              <view class="planner-thread-divider-line"></view>
+              <text class="planner-thread-divider-label">{{item.title}}</text>
+              <view class="planner-thread-divider-line"></view>
+            </view>
+
+            <block wx:else>
+              <view wx:if="{{item.kind === 'ready'}}" class="planner-message-head">
+                <view class="planner-message-head-copy">
+                  <text class="planner-message-title">{{item.title}}</text>
+                  <text wx:if="{{item.attachmentName}}" class="planner-message-attachment">{{item.attachmentName}}</text>
+                </view>
+
+                <button
+                  wx:if="{{item.actionLabel}}"
+                  class="planner-thread-action"
+                  loading="{{loading}}"
+                  disabled="{{loading}}"
+                  bindtap="onProposeSchedule"
+                >
+                  {{item.actionLabel}}
+                </button>
+              </view>
+
+              <block wx:else>
+                <text wx:if="{{item.kind !== 'user_input'}}" class="planner-message-title">{{item.title}}</text>
+                <text wx:if="{{item.attachmentName}}" class="planner-message-attachment">{{item.attachmentName}}</text>
+              </block>
+
+              <view wx:if="{{item.body}}" class="planner-message-body">{{item.body}}</view>
+            </block>
           </view>
 
           <view wx:if="{{loading}}" class="planner-message planner-message-system">
@@ -248,20 +529,43 @@
             data-attachment-kind="{{action.kind}}"
             bindtap="onSelectAttachmentAction"
           >
-            <text class="planner-attachment-action-icon">
-              {{action.kind === 'doc' ? '▤' : action.kind === 'image' ? '▣' : '≡'}}
-            </text>
+            <view class="planner-attachment-action-icon">
+              <view wx:if="{{action.kind === 'doc'}}" class="planner-attachment-glyph planner-attachment-glyph-doc">
+                <view class="planner-attachment-glyph-doc-sheet"></view>
+                <view class="planner-attachment-glyph-doc-line planner-attachment-glyph-doc-line-top"></view>
+                <view class="planner-attachment-glyph-doc-line planner-attachment-glyph-doc-line-bottom"></view>
+              </view>
+
+              <view wx:if="{{action.kind === 'image'}}" class="planner-attachment-glyph planner-attachment-glyph-image">
+                <view class="planner-attachment-glyph-image-frame">
+                  <view class="planner-attachment-glyph-image-sun"></view>
+                  <view class="planner-attachment-glyph-image-mountain"></view>
+                </view>
+              </view>
+
+              <view wx:if="{{action.kind === 'text'}}" class="planner-attachment-glyph planner-attachment-glyph-text">
+                <view class="planner-attachment-glyph-text-line planner-attachment-glyph-text-line-1"></view>
+                <view class="planner-attachment-glyph-text-line planner-attachment-glyph-text-line-2"></view>
+                <view class="planner-attachment-glyph-text-line planner-attachment-glyph-text-line-3"></view>
+              </view>
+            </view>
             <text class="planner-attachment-action-text">{{action.label}}</text>
+            <view class="planner-attachment-action-arrow"></view>
           </view>
 
           <view class="planner-attachment-action planner-attachment-action-cancel" bindtap="onCloseAttachmentPicker">
-            <text class="planner-attachment-action-icon">×</text>
+            <view class="planner-attachment-action-icon">
+              <view class="planner-attachment-glyph planner-attachment-glyph-close">
+                <view class="planner-attachment-glyph-close-line planner-attachment-glyph-close-line-a"></view>
+                <view class="planner-attachment-glyph-close-line planner-attachment-glyph-close-line-b"></view>
+              </view>
+            </view>
             <text class="planner-attachment-action-text">取消</text>
           </view>
         </view>
       </view>
 
-      <view wx:if="{{arrangeTab === 'arrange'}}" class="planner-composer">
+      <view wx:if="{{arrangeTab === 'arrange' && (stage === 'idle' || stage === 'clarifying')}}" class="planner-composer">
         <view wx:if="{{home.arrangeSheet.attachments.length}}" class="planner-attachments">
           <view wx:for="{{home.arrangeSheet.attachments}}" wx:for-item="attachment" wx:key="name" class="planner-attachment-chip">
             <text class="planner-attachment-name">{{attachment.name}}</text>
@@ -269,7 +573,7 @@
         </view>
 
         <view class="planner-composer-shell">
-          <view class="planner-input-shell {{stage === 'ready_to_schedule' ? 'planner-input-shell-ready' : ''}}">
+          <view class="planner-input-shell">
             <view class="planner-tool planner-tool-add planner-tool-inline" bindtap="onOpenAttachmentPicker">
               <text class="planner-tool-mark">+</text>
             </view>
@@ -292,40 +596,123 @@
               bindinput="onAnswerInput"
             />
 
-            <view wx:if="{{stage === 'ready_to_schedule'}}" class="planner-ready-copy">
-              <text>信息已经足够，点击右侧按钮确认排期。</text>
-            </view>
-
             <view wx:if="{{stage === 'idle' || stage === 'clarifying'}}" class="planner-send-inline">
               <button
                 wx:if="{{stage === 'idle'}}"
                 class="planner-send-inline-button"
                 loading="{{loading}}"
-                disabled="{{loading}}"
+                disabled="{{loading || !canSubmitDraft}}"
                 bindtap="onSubmitDraft"
               >
-                ↑
+                <image class="planner-send-inline-icon" src="../../assets/send-arrow.svg" mode="aspectFit" />
               </button>
 
               <button
                 wx:if="{{stage === 'clarifying'}}"
                 class="planner-send-inline-button"
                 loading="{{loading}}"
-                disabled="{{loading}}"
+                disabled="{{loading || !canSubmitAnswer}}"
                 bindtap="onSubmitClarification"
               >
-                ↑
+                <image class="planner-send-inline-icon" src="../../assets/send-arrow.svg" mode="aspectFit" />
               </button>
-            </view>
-
-            <view wx:if="{{stage === 'ready_to_schedule'}}" class="planner-send-inline">
-              <view class="planner-send-inline-label" bindtap="onProposeSchedule">
-                <text>稍等</text>
-              </view>
             </view>
           </view>
         </view>
       </view>
+    </view>
+  </view>
+
+  <view wx:if="{{taskDetailVisible}}" class="task-detail-mask" bindtap="onCloseTaskDetail"></view>
+  <view wx:if="{{taskDetailVisible}}" class="task-detail-sheet">
+    <view class="task-detail-sheet-surface">
+      <view class="task-detail-handle"></view>
+      <scroll-view wx:if="{{selectedTaskDetail}}" class="task-detail-body" scroll-y="true" show-scrollbar="false">
+        <view class="task-detail-hero">
+          <view class="task-detail-hero-top">
+            <text class="task-detail-kicker">任务详情</text>
+            <text class="task-detail-status-badge">{{selectedTaskDetail.statusLabel}}</text>
+          </view>
+          <text class="task-detail-title">{{selectedTaskDetail.taskName}}</text>
+          <text class="task-detail-summary">{{selectedTaskDetail.summary}}</text>
+
+          <view class="task-detail-primary-meta">
+            <view class="task-detail-primary-card task-detail-primary-card-focus">
+              <text class="task-detail-meta-label">时间范围</text>
+              <text class="task-detail-meta-value">{{selectedTaskDetail.timeRangeLabel}}</text>
+            </view>
+            <view class="task-detail-primary-card">
+              <text class="task-detail-meta-label">优先级</text>
+              <text class="task-detail-meta-value">{{selectedTaskDetail.priorityLabel}}</text>
+            </view>
+          </view>
+
+          <view class="task-detail-chip-row">
+            <text class="task-detail-chip">{{selectedTaskDetail.categoryTitle}}</text>
+            <text class="task-detail-chip">{{selectedTaskDetail.sourceLabel}}</text>
+            <text wx:if="{{selectedTaskDetail.parentTaskTitle}}" class="task-detail-chip">母任务 · {{selectedTaskDetail.parentTaskTitle}}</text>
+          </view>
+        </view>
+
+        <view class="task-detail-meta-grid">
+          <view class="task-detail-meta-item">
+            <text class="task-detail-meta-label">截止时间</text>
+            <text class="task-detail-meta-value">{{selectedTaskDetail.deadlineLabel}}</text>
+          </view>
+          <view class="task-detail-meta-item">
+            <text class="task-detail-meta-label">预计时长</text>
+            <text class="task-detail-meta-value">{{selectedTaskDetail.durationLabel}}</text>
+          </view>
+          <view class="task-detail-meta-item">
+            <text class="task-detail-meta-label">来源</text>
+            <text class="task-detail-meta-value">{{selectedTaskDetail.sourceLabel}}</text>
+          </view>
+          <view class="task-detail-meta-item">
+            <text class="task-detail-meta-label">分类</text>
+            <text class="task-detail-meta-value">{{selectedTaskDetail.categoryTitle}}</text>
+          </view>
+        </view>
+
+        <view class="task-detail-section-list">
+          <view wx:for="{{selectedTaskDetail.sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="id" class="task-detail-section-card">
+            <view class="task-detail-section-head">
+              <view>
+                <text class="task-detail-section-kicker">信息模块 {{sectionIndex + 1}}</text>
+                <text class="task-detail-section-title">{{section.title}}</text>
+              </view>
+              <text wx:if="{{section.summary}}" class="task-detail-section-copy">{{section.summary}}</text>
+            </view>
+
+            <view class="task-detail-section-items">
+              <view wx:for="{{section.items}}" wx:for-item="item" wx:key="id" class="task-detail-section-item">
+                <text class="task-detail-section-item-label">{{item.label}}</text>
+                <text class="task-detail-section-item-value">{{item.value}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <view class="task-detail-history-card">
+          <view class="task-detail-section-head">
+            <view>
+              <text class="task-detail-section-kicker">时间线</text>
+              <text class="task-detail-section-title">历史记录</text>
+            </view>
+            <text class="task-detail-section-copy">保留任务从抽取到排期的变化痕迹。</text>
+          </view>
+
+          <view class="task-detail-history-list">
+            <view wx:for="{{selectedTaskDetail.history}}" wx:for-item="entry" wx:key="id" class="task-detail-history-item">
+              <view class="task-detail-history-marker"></view>
+              <view class="task-detail-history-body">
+                <text class="task-detail-history-title">{{entry.title}}</text>
+                <text class="task-detail-history-summary">{{entry.summary}}</text>
+                <text class="task-detail-history-time">{{entry.updatedAt}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
     </view>
   </view>
 </view>

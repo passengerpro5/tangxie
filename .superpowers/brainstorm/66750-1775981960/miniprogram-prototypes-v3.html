@@ -1,0 +1,724 @@
+<style>
+  :root {
+    --bg: #f6efe7;
+    --surface: rgba(255, 251, 246, 0.9);
+    --stroke: rgba(171, 114, 67, 0.12);
+    --text: #2f241c;
+    --muted: #6d5a4a;
+    --accent: #f59e0b;
+    --accent-2: #f68b6b;
+    --accent-3: #fb7185;
+    --soft: rgba(245, 158, 11, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  .intro {
+    max-width: 980px;
+    margin-bottom: 18px;
+  }
+
+  .intro h2 {
+    margin: 0 0 10px;
+    color: var(--text);
+    font-size: 2rem;
+  }
+
+  .intro p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+
+  .meta {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    display: inline-flex;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    color: #9a5b16;
+    font-size: 12px;
+  }
+
+  .stack {
+    display: grid;
+    gap: 18px;
+  }
+
+  .screen-card {
+    border-radius: 30px;
+    background: linear-gradient(180deg, rgba(255,252,247,0.96), rgba(255,247,239,0.92));
+    border: 1px solid var(--stroke);
+    box-shadow: 0 24px 58px rgba(137, 76, 37, 0.12);
+    padding: 20px;
+  }
+
+  .screen-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .screen-head h3 {
+    margin: 0 0 8px;
+    color: var(--text);
+    font-size: 1.35rem;
+  }
+
+  .screen-head p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .note-box {
+    border-radius: 22px;
+    background: rgba(255, 250, 244, 0.94);
+    border: 1px solid rgba(171, 114, 67, 0.1);
+    padding: 14px 16px;
+  }
+
+  .note-box h4 {
+    margin: 0 0 10px;
+    color: var(--text);
+    font-size: 0.98rem;
+  }
+
+  .note-box ul {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--muted);
+    line-height: 1.72;
+  }
+
+  .mock-wrap {
+    margin-top: 16px;
+    display: grid;
+    justify-content: center;
+  }
+
+  .phone {
+    width: 432px;
+    max-width: 100%;
+    border-radius: 34px;
+    background: #fffaf5;
+    border: 1px solid rgba(171, 114, 67, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.75);
+    padding: 16px;
+  }
+
+  .phone-shell {
+    display: grid;
+    gap: 10px;
+  }
+
+  .status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 4px 0;
+    color: #8e7460;
+    font-size: 12px;
+  }
+
+  .status-dots {
+    display: flex;
+    gap: 5px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(171, 114, 67, 0.2);
+  }
+
+  .primary-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,248,241,0.88));
+    border: 1px solid rgba(171, 114, 67, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65);
+  }
+
+  .primary-tab {
+    padding: 11px 15px;
+    border-radius: 18px;
+    color: #8b5e34;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .primary-tab.active {
+    background: linear-gradient(135deg, rgba(245,158,11,0.94), rgba(246,139,107,0.92));
+    color: #fff8f1;
+    box-shadow: 0 10px 22px rgba(246, 139, 107, 0.2);
+  }
+
+  .control-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .control-left,
+  .control-right {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .control-right {
+    justify-content: flex-end;
+  }
+
+  .soft-tab,
+  .mode-pill,
+  .data-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .soft-tab {
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.78);
+    border: 1px solid rgba(171, 114, 67, 0.08);
+    color: #8b5e34;
+    font-size: 12px;
+  }
+
+  .soft-tab.active {
+    background: rgba(245, 158, 11, 0.12);
+    color: #9a5b16;
+  }
+
+  .mode-pill {
+    padding: 7px 9px;
+    border-radius: 12px;
+    background: rgba(245, 158, 11, 0.08);
+    color: #8b5e34;
+    font-size: 11px;
+  }
+
+  .mode-pill.active {
+    background: rgba(251, 113, 133, 0.14);
+    color: #b8325e;
+  }
+
+  .summary {
+    border-radius: 18px;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(171, 114, 67, 0.1);
+    padding: 10px 12px;
+  }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .headline {
+    height: 10px;
+    width: 43%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-3));
+  }
+
+  .metric-set {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+
+  .data-pill {
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.1);
+    color: #8b5e34;
+    font-size: 11px;
+  }
+
+  .caret {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    color: #9a5b16;
+    font-size: 12px;
+  }
+
+  .surface {
+    border-radius: 22px;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(171, 114, 67, 0.08);
+    padding: 12px;
+  }
+
+  .line {
+    height: 9px;
+    border-radius: 999px;
+    background: rgba(183, 127, 79, 0.14);
+  }
+
+  .line.accent {
+    background: linear-gradient(90deg, rgba(245,158,11,0.58), rgba(246,139,107,0.46));
+  }
+
+  .timeline {
+    border-radius: 20px;
+    min-height: 224px;
+    position: relative;
+    background:
+      repeating-linear-gradient(
+        180deg,
+        rgba(171, 114, 67, 0.06),
+        rgba(171, 114, 67, 0.06) 1px,
+        transparent 1px,
+        transparent 38px
+      );
+  }
+
+  .time-rail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 38px;
+    display: grid;
+    align-content: start;
+    gap: 20px;
+    padding-top: 8px;
+  }
+
+  .time-rail span {
+    color: rgba(109, 90, 74, 0.54);
+    font-size: 10px;
+  }
+
+  .task-block {
+    position: absolute;
+    left: 48px;
+    right: 14px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(247,178,103,0.92), rgba(246,139,107,0.88));
+    box-shadow: 0 10px 26px rgba(246, 139, 107, 0.18);
+  }
+
+  .task-a { top: 14px; height: 42px; }
+  .task-b { top: 76px; right: 58px; height: 58px; }
+  .task-c { top: 158px; left: 74px; right: 16px; height: 38px; }
+
+  .board,
+  .plan {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .column {
+    border-radius: 18px;
+    background: rgba(255, 251, 246, 0.98);
+    border: 1px solid rgba(171, 114, 67, 0.08);
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+    min-height: 190px;
+  }
+
+  .task-card,
+  .plan-bar {
+    border-radius: 14px;
+  }
+
+  .task-card {
+    min-height: 58px;
+    background: rgba(247,178,103,0.18);
+    border: 1px solid rgba(245, 158, 11, 0.14);
+  }
+
+  .plan-bar {
+    min-height: 28px;
+    background: linear-gradient(90deg, rgba(247,178,103,0.62), rgba(246,139,107,0.62));
+  }
+
+  .detail-top {
+    display: grid;
+    gap: 10px;
+  }
+
+  .detail-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #8b5e34;
+    font-size: 13px;
+    padding: 2px 4px;
+  }
+
+  .detail-main {
+    display: grid;
+    gap: 10px;
+  }
+
+  .detail-meta,
+  .detail-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .detail-meta {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .mini-card {
+    border-radius: 18px;
+    background: rgba(255, 249, 243, 0.94);
+    border: 1px solid rgba(171, 114, 67, 0.08);
+    padding: 12px;
+    min-height: 66px;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1.05fr 0.95fr;
+  }
+
+  .history {
+    display: grid;
+    gap: 8px;
+  }
+
+  .history-item {
+    border-radius: 14px;
+    background: rgba(255, 251, 246, 0.96);
+    border: 1px solid rgba(171, 114, 67, 0.08);
+    padding: 10px;
+  }
+
+  @media (max-width: 1100px) {
+    .screen-head,
+    .detail-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .phone {
+      width: 100%;
+    }
+  }
+</style>
+
+<div class="intro">
+  <h2>糖蟹小程序高保真原型 V3</h2>
+  <p>这版已经把你确认过的规则合并进完整小程序方案：`浮岛混合` 作为统一 tab 语言，顶部尽量不跨行，`今日节奏` 只出现在 `日程` 首页，`事项 / 排期` 直接进入主内容，`任务详情` 只做信息展示升级。</p>
+  <div class="meta">
+    <span class="chip">首页仍是日程</span>
+    <span class="chip">日程 / 事项 / 排期功能不改</span>
+    <span class="chip">今日节奏只属于日程页</span>
+    <span class="chip">任务详情不新增操作</span>
+  </div>
+</div>
+
+<div class="stack">
+  <section class="screen-card">
+    <div class="screen-head">
+      <div>
+        <h3>日程首页</h3>
+        <p>首页保留最高层级的 `日程 / 事项 / 排期` 浮岛导航。二级模式和时间粒度压缩到同一控制带里，默认只有一行式 `今日节奏` 摘要，不抢主工作区高度。</p>
+      </div>
+      <aside class="note-box">
+        <h4>审核重点</h4>
+        <ul>
+          <li>首页是不是更轻了，但仍然像真正的日程首页。</li>
+          <li>tab 层级够高，但没有压得太重。</li>
+          <li>摘要条够克制，时间轴仍然是视觉主角。</li>
+        </ul>
+      </aside>
+    </div>
+    <div class="mock-wrap">
+      <div class="phone">
+        <div class="phone-shell">
+          <div class="status-row">
+            <span>9:41</span>
+            <div class="status-dots">
+              <span class="status-dot"></span>
+              <span class="status-dot"></span>
+              <span class="status-dot"></span>
+            </div>
+          </div>
+          <div class="primary-tabs">
+            <div class="primary-tab active">日程</div>
+            <div class="primary-tab">事项</div>
+            <div class="primary-tab">排期</div>
+          </div>
+          <div class="control-row">
+            <div class="control-left">
+              <div class="soft-tab active">今日节奏</div>
+              <div class="soft-tab">时间轴</div>
+              <div class="soft-tab">提醒</div>
+            </div>
+            <div class="control-right">
+              <div class="mode-pill active">日</div>
+              <div class="mode-pill">周</div>
+              <div class="mode-pill">月</div>
+              <div class="mode-pill">年</div>
+            </div>
+          </div>
+          <div class="summary">
+            <div class="summary-row">
+              <div class="headline"></div>
+              <div class="metric-set">
+                <span class="data-pill">3 待办</span>
+                <span class="data-pill">1 高优</span>
+                <span class="data-pill">2h</span>
+                <span class="data-pill caret">⌄</span>
+              </div>
+            </div>
+          </div>
+          <div class="surface">
+            <div class="timeline">
+              <div class="time-rail">
+                <span>08</span>
+                <span>10</span>
+                <span>14</span>
+                <span>18</span>
+              </div>
+              <div class="task-block task-a"></div>
+              <div class="task-block task-b"></div>
+              <div class="task-block task-c"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen-card">
+    <div class="screen-head">
+      <div>
+        <h3>事项页</h3>
+        <p>`事项` 页面不再继承 `今日节奏`，顶部压缩为“一级浮岛 + 一条紧凑控制带”。看板逻辑不改，但列头和卡片层级更清晰，先做什么更容易被看见。</p>
+      </div>
+      <aside class="note-box">
+        <h4>审核重点</h4>
+        <ul>
+          <li>进入事项后，顶部是否已经足够短。</li>
+          <li>看板有没有更清楚，但没有被改成功能不同的页面。</li>
+          <li>优先级和推进感够不够明显。</li>
+        </ul>
+      </aside>
+    </div>
+    <div class="mock-wrap">
+      <div class="phone">
+        <div class="phone-shell">
+          <div class="status-row">
+            <span>9:41</span>
+            <div class="status-dots">
+              <span class="status-dot"></span>
+              <span class="status-dot"></span>
+              <span class="status-dot"></span>
+            </div>
+          </div>
+          <div class="primary-tabs">
+            <div class="primary-tab">日程</div>
+            <div class="primary-tab active">事项</div>
+            <div class="primary-tab">排期</div>
+          </div>
+          <div class="control-row">
+            <div class="control-left">
+              <div class="soft-tab active">全部事项</div>
+              <div class="soft-tab">高优先级</div>
+            </div>
+            <div class="control-right">
+              <div class="mode-pill active">按列</div>
+              <div class="mode-pill">按优先级</div>
+            </div>
+          </div>
+          <div class="surface">
+            <div class="board">
+              <div class="column">
+                <div class="line accent" style="width:56%;"></div>
+                <div class="task-card"></div>
+                <div class="task-card"></div>
+              </div>
+              <div class="column">
+                <div class="line accent" style="width:48%;"></div>
+                <div class="task-card"></div>
+              </div>
+              <div class="column">
+                <div class="line accent" style="width:62%;"></div>
+                <div class="task-card"></div>
+                <div class="task-card"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen-card">
+    <div class="screen-head">
+      <div>
+        <h3>排期页</h3>
+        <p>`排期` 和 `事项` 一样不显示 `今日节奏`。顶部控制带更像计划视图的筛选和粒度切换，主体仍然是原有的规划/甘特能力，只是阅读压力更低。</p>
+      </div>
+      <aside class="note-box">
+        <h4>审核重点</h4>
+        <ul>
+          <li>顶部是否足够短，但还保留了排期视图的专业感。</li>
+          <li>规划主体是否更像计划，而不是冷硬图表。</li>
+          <li>时间粒度切换是否清楚。</li>
+        </ul>
+      </aside>
+    </div>
+    <div class="mock-wrap">
+      <div class="phone">
+        <div class="phone-shell">
+          <div class="status-row">
+            <span>9:41</span>
+            <div class="status-dots">
+              <span class="status-dot"></span>
+              <span class="status-dot"></span>
+              <span class="status-dot"></span>
+            </div>
+          </div>
+          <div class="primary-tabs">
+            <div class="primary-tab">日程</div>
+            <div class="primary-tab">事项</div>
+            <div class="primary-tab active">排期</div>
+          </div>
+          <div class="control-row">
+            <div class="control-left">
+              <div class="soft-tab active">规划视图</div>
+              <div class="soft-tab">阶段</div>
+            </div>
+            <div class="control-right">
+              <div class="mode-pill active">日</div>
+              <div class="mode-pill">周</div>
+              <div class="mode-pill">月</div>
+            </div>
+          </div>
+          <div class="surface">
+            <div class="plan">
+              <div class="column">
+                <div class="line accent" style="width:54%;"></div>
+                <div class="plan-bar"></div>
+                <div class="plan-bar" style="width:74%;"></div>
+              </div>
+              <div class="column">
+                <div class="line accent" style="width:46%;"></div>
+                <div class="plan-bar" style="width:84%;"></div>
+                <div class="plan-bar" style="width:58%;"></div>
+              </div>
+              <div class="column">
+                <div class="line accent" style="width:62%;"></div>
+                <div class="plan-bar" style="width:66%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen-card">
+    <div class="screen-head">
+      <div>
+        <h3>任务详情</h3>
+        <p>任务详情不新增任何操作能力，只把现有信息组织得更完整。第一屏先给任务标题、状态、时间、优先级；下面再给计划说明、来源信息和历史记录，避免现在那种信息过薄的感觉。</p>
+      </div>
+      <aside class="note-box">
+        <h4>审核重点</h4>
+        <ul>
+          <li>这页是不是更完整了，但没有偷偷变成操作页。</li>
+          <li>第一屏关键信息是否集中。</li>
+          <li>整体气质是否和前面三页统一。</li>
+        </ul>
+      </aside>
+    </div>
+    <div class="mock-wrap">
+      <div class="phone">
+        <div class="phone-shell">
+          <div class="status-row">
+            <span>9:41</span>
+            <div class="status-dots">
+              <span class="status-dot"></span>
+              <span class="status-dot"></span>
+              <span class="status-dot"></span>
+            </div>
+          </div>
+          <div class="detail-top">
+            <div class="detail-nav">
+              <span>‹ 返回</span>
+              <span>任务详情</span>
+              <span>···</span>
+            </div>
+          </div>
+          <div class="detail-main">
+            <div class="surface">
+              <div class="line accent" style="width:68%;"></div>
+              <div class="line" style="width:42%; margin-top:10px;"></div>
+              <div class="control-left" style="margin-top:12px;">
+                <div class="soft-tab active">P1</div>
+                <div class="soft-tab">今日进行中</div>
+                <div class="soft-tab">工作</div>
+              </div>
+            </div>
+            <div class="detail-meta">
+              <div class="mini-card">
+                <div class="line accent" style="width:56%;"></div>
+                <div class="line" style="width:72%; margin-top:10px;"></div>
+              </div>
+              <div class="mini-card">
+                <div class="line accent" style="width:48%;"></div>
+                <div class="line" style="width:64%; margin-top:10px;"></div>
+              </div>
+              <div class="mini-card">
+                <div class="line accent" style="width:52%;"></div>
+                <div class="line" style="width:58%; margin-top:10px;"></div>
+              </div>
+            </div>
+            <div class="detail-grid">
+              <div class="surface">
+                <div class="line accent" style="width:36%;"></div>
+                <div class="line" style="width:92%; margin-top:12px;"></div>
+                <div class="line" style="width:86%; margin-top:8px;"></div>
+                <div class="line" style="width:74%; margin-top:8px;"></div>
+              </div>
+              <div class="surface">
+                <div class="line accent" style="width:42%;"></div>
+                <div class="line" style="width:78%; margin-top:12px;"></div>
+                <div class="line" style="width:64%; margin-top:8px;"></div>
+              </div>
+            </div>
+            <div class="history">
+              <div class="history-item">
+                <div class="line accent" style="width:34%;"></div>
+                <div class="line" style="width:88%; margin-top:10px;"></div>
+              </div>
+              <div class="history-item">
+                <div class="line accent" style="width:28%;"></div>
+                <div class="line" style="width:82%; margin-top:10px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

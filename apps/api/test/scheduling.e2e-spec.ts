@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createAppHandler } from "../src/app.module.ts";
 import { createSchedulingHandler } from "../src/modules/scheduling/scheduling.controller.ts";
 import { SchedulingService } from "../src/modules/scheduling/scheduling.service.ts";
 
@@ -33,6 +34,18 @@ function createResponse() {
 }
 
 async function invoke(handler: ReturnType<typeof createSchedulingHandler>, method: string, url: string, body?: unknown) {
+  const request = createRequest(method, url, body);
+  const { response, state } = createResponse();
+  await handler(request as never, response as never);
+
+  return {
+    statusCode: state.statusCode,
+    headers: state.headers,
+    body: state.bodyText ? JSON.parse(state.bodyText) : null,
+  };
+}
+
+async function invokeApp(handler: ReturnType<typeof createAppHandler>, method: string, url: string, body?: unknown) {
   const request = createRequest(method, url, body);
   const { response, state } = createResponse();
   await handler(request as never, response as never);
@@ -138,4 +151,87 @@ test("scheduling returns a failure when the work does not fit before the deadlin
   assert.equal(response.statusCode, 422);
   assert.equal(response.body.reason, "does-not-fit");
   assert.deepEqual(response.body.unscheduledTaskIds, ["task-1"]);
+});
+
+test("confirmed schedule blocks can be updated and read back through task endpoints", async () => {
+  const handler = createAppHandler({
+    now: () => new Date("2026-04-12T00:00:00.000Z"),
+  });
+
+  const intakeRes = await invokeApp(handler, "POST", "/tasks/intake", {
+    rawText: "2026-04-12 1小时 排期验证：编辑块",
+  });
+
+  assert.equal(intakeRes.statusCode, 201);
+  assert.equal(intakeRes.body.task.status, "schedulable");
+
+  const confirmRes = await invokeApp(handler, "POST", "/scheduling/confirm", {
+    taskIds: [intakeRes.body.task.id],
+  });
+
+  assert.equal(confirmRes.statusCode, 201);
+  assert.equal(confirmRes.body.blocks.length, 1);
+  assert.equal(confirmRes.body.blocks[0].status, "confirmed");
+
+  const blockId = confirmRes.body.blocks[0].id;
+  const patchRes = await invokeApp(handler, "PATCH", `/tasks/${intakeRes.body.task.id}/schedule-blocks/${blockId}`, {
+    startAt: "2026-04-12T03:00:00.000Z",
+    endAt: "2026-04-12T04:00:00.000Z",
+  });
+
+  assert.equal(patchRes.statusCode, 200);
+  assert.equal(patchRes.body.task.id, intakeRes.body.task.id);
+  assert.equal(patchRes.body.scheduleBlocks.length, 1);
+  assert.equal(patchRes.body.scheduleBlocks[0].id, blockId);
+  assert.equal(patchRes.body.scheduleBlocks[0].startAt, "2026-04-12T03:00:00.000Z");
+  assert.equal(patchRes.body.scheduleBlocks[0].endAt, "2026-04-12T04:00:00.000Z");
+
+  const tasksRes = await invokeApp(handler, "GET", "/tasks");
+  assert.equal(tasksRes.statusCode, 200);
+  assert.equal(tasksRes.body.items.length, 1);
+  assert.equal(tasksRes.body.items[0].scheduleBlocks.length, 1);
+  assert.equal(tasksRes.body.items[0].scheduleBlocks[0].startAt, "2026-04-12T03:00:00.000Z");
+  assert.equal(tasksRes.body.items[0].scheduleBlocks[0].endAt, "2026-04-12T04:00:00.000Z");
+
+  const detailRes = await invokeApp(handler, "GET", `/tasks/${intakeRes.body.task.id}`);
+  assert.equal(detailRes.statusCode, 200);
+  assert.equal(detailRes.body.scheduleBlocks.length, 1);
+  assert.equal(detailRes.body.scheduleBlocks[0].startAt, "2026-04-12T03:00:00.000Z");
+  assert.equal(detailRes.body.scheduleBlocks[0].endAt, "2026-04-12T04:00:00.000Z");
+});
+
+test("confirmed schedule block updates reject overlaps with existing blocks", async () => {
+  const handler = createAppHandler({
+    now: () => new Date("2026-04-12T00:00:00.000Z"),
+  });
+
+  const firstIntake = await invokeApp(handler, "POST", "/tasks/intake", {
+    rawText: "2026-04-12 1小时 排期验证：第一个块",
+  });
+  const secondIntake = await invokeApp(handler, "POST", "/tasks/intake", {
+    rawText: "2026-04-12 1小时 排期验证：第二个块",
+  });
+
+  const confirmRes = await invokeApp(handler, "POST", "/scheduling/confirm", {
+    taskIds: [firstIntake.body.task.id, secondIntake.body.task.id],
+  });
+
+  assert.equal(confirmRes.statusCode, 201);
+  assert.equal(confirmRes.body.blocks.length, 2);
+
+  const firstBlockId = confirmRes.body.blocks[0].id;
+  const secondBlock = confirmRes.body.blocks[1];
+
+  const patchRes = await invokeApp(
+    handler,
+    "PATCH",
+    `/tasks/${firstIntake.body.task.id}/schedule-blocks/${firstBlockId}`,
+    {
+      startAt: secondBlock.startAt,
+      endAt: secondBlock.endAt,
+    },
+  );
+
+  assert.equal(patchRes.statusCode, 400);
+  assert.equal(patchRes.body.message, "Updated schedule block overlaps an existing confirmed block");
 });

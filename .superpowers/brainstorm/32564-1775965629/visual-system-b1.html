@@ -1,0 +1,432 @@
+<style>
+  .page {
+    display: grid;
+    gap: 22px;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 18px;
+    align-items: stretch;
+  }
+
+  .hero-card,
+  .panel {
+    border-radius: 28px;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(255, 247, 239, 0.92));
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    box-shadow: 0 22px 54px rgba(137, 76, 37, 0.12);
+  }
+
+  .hero-card {
+    padding: 26px;
+    background:
+      radial-gradient(circle at top right, rgba(248, 187, 120, 0.26), transparent 30%),
+      radial-gradient(circle at bottom left, rgba(253, 186, 116, 0.22), transparent 28%),
+      linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(255, 246, 236, 0.95));
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.14);
+    color: #b45309;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 14px;
+  }
+
+  .hero-card h2 {
+    margin: 0;
+    font-size: 2rem;
+    color: #2b2118;
+  }
+
+  .hero-card p {
+    margin: 14px 0 0;
+    color: #6b5b4d;
+    line-height: 1.7;
+    max-width: 54ch;
+  }
+
+  .promise {
+    display: grid;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .promise-item {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    color: #534233;
+  }
+
+  .promise-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f59e0b, #fb7185);
+    flex: none;
+  }
+
+  .mini-preview {
+    padding: 18px;
+    display: grid;
+    gap: 14px;
+    background:
+      radial-gradient(circle at top, rgba(254, 215, 170, 0.28), transparent 38%),
+      linear-gradient(180deg, #fff9f2 0%, #fff2e8 100%);
+  }
+
+  .phone {
+    max-width: 340px;
+    margin: 0 auto;
+    border-radius: 34px;
+    padding: 14px;
+    background: #fffaf5;
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.8), 0 18px 44px rgba(143, 92, 53, 0.16);
+  }
+
+  .phone-top {
+    height: 46px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #f7b267, #f68b6b);
+    margin-bottom: 14px;
+  }
+
+  .phone-card {
+    border-radius: 24px;
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(180, 108, 56, 0.1);
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+
+  .line {
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(183, 127, 79, 0.14);
+  }
+
+  .line.accent {
+    background: linear-gradient(90deg, #f59e0b, #fb7185);
+  }
+
+  .tabs {
+    display: flex;
+    gap: 10px;
+    margin: 12px 0 4px;
+  }
+
+  .tab {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(217, 119, 6, 0.08);
+    color: #8b5e34;
+    font-size: 13px;
+  }
+
+  .tab.active {
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: #fff8f1;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .panel {
+    padding: 20px;
+  }
+
+  .panel h3 {
+    margin: 0 0 14px;
+    color: #33261d;
+    font-size: 1.05rem;
+  }
+
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .swatch {
+    display: grid;
+    gap: 8px;
+  }
+
+  .swatch-chip {
+    height: 68px;
+    border-radius: 18px;
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .swatch small,
+  .type-card small,
+  .token small {
+    color: #7a6859;
+    line-height: 1.5;
+  }
+
+  .type-stack {
+    display: grid;
+    gap: 12px;
+  }
+
+  .type-card {
+    border-radius: 20px;
+    background: rgba(255,255,255,0.8);
+    border: 1px solid rgba(180, 108, 56, 0.1);
+    padding: 14px;
+  }
+
+  .display {
+    font-size: 34px;
+    line-height: 1.08;
+    color: #2b2118;
+    letter-spacing: -0.03em;
+  }
+
+  .bodycopy {
+    font-size: 16px;
+    line-height: 1.7;
+    color: #5a4b3d;
+  }
+
+  .token-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .token {
+    border-radius: 18px;
+    background: rgba(255,255,255,0.82);
+    border: 1px solid rgba(180, 108, 56, 0.1);
+    padding: 12px 14px;
+  }
+
+  .split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+  .desktop-preview,
+  .mobile-preview {
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    background: linear-gradient(180deg, #fffaf4, #fff3ea);
+  }
+
+  .desktop-preview {
+    min-height: 280px;
+  }
+
+  .window {
+    height: 32px;
+    background: rgba(255, 255, 255, 0.7);
+    border-bottom: 1px solid rgba(180, 108, 56, 0.08);
+  }
+
+  .desktop-shell {
+    padding: 14px;
+    display: grid;
+    gap: 12px;
+  }
+
+  .desk-bar {
+    height: 56px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #3a2b22, #6a4a37);
+  }
+
+  .desk-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 12px;
+  }
+
+  .box {
+    border-radius: 18px;
+    background: rgba(255,255,255,0.84);
+    border: 1px solid rgba(180, 108, 56, 0.1);
+    padding: 12px;
+    min-height: 96px;
+  }
+
+  .box.tall {
+    min-height: 178px;
+  }
+
+  .mobile-shell {
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .mini-bar {
+    height: 44px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #f7b267, #f68b6b);
+  }
+
+  .footer-note {
+    color: #806d5d;
+    line-height: 1.65;
+    margin: 2px 0 0;
+  }
+
+  @media (max-width: 1100px) {
+    .hero,
+    .grid,
+    .split {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="page">
+  <div class="hero">
+    <div class="hero-card">
+      <div class="eyebrow">Direction B.2</div>
+      <h2>温和治愈的外壳，强效率的内核</h2>
+      <p>整体情绪不是冷硬的控制台，而是“被安顿好的效率工具”。它让用户感觉压力被接住了，但不会牺牲执行力、清晰度和状态感知。</p>
+      <div class="promise">
+        <div class="promise-item"><span class="promise-dot"></span><span>颜色更暖，但主操作和关键状态仍然清晰有力</span></div>
+        <div class="promise-item"><span class="promise-dot"></span><span>排期、看板、规划继续是主能力，只把信息密度做得更有呼吸感</span></div>
+        <div class="promise-item"><span class="promise-dot"></span><span>后台也从“硬配置台”变成“照料系统运转的工作台”</span></div>
+      </div>
+    </div>
+
+    <div class="hero-card mini-preview">
+      <div class="phone">
+        <div class="phone-top"></div>
+        <div class="phone-card">
+          <div class="line accent" style="width: 72%;"></div>
+          <div class="line" style="width: 46%; margin-top: 10px;"></div>
+        </div>
+        <div class="tabs">
+          <div class="tab active">日程</div>
+          <div class="tab">看板</div>
+          <div class="tab">规划</div>
+        </div>
+        <div class="phone-card">
+          <div class="line accent" style="width: 66%;"></div>
+          <div class="line" style="width: 58%; margin-top: 10px;"></div>
+          <div class="line" style="width: 38%; margin-top: 10px;"></div>
+        </div>
+        <div class="phone-card">
+          <div class="line accent" style="width: 58%;"></div>
+          <div class="line" style="width: 70%; margin-top: 10px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h3>品牌颜色</h3>
+      <div class="swatches">
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#FFF8F1;"></div>
+          <small>Rice Mist<br>#FFF8F1</small>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#F7B267;"></div>
+          <small>Apricot Glow<br>#F7B267</small>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#F68B6B;"></div>
+          <small>Coral Signal<br>#F68B6B</small>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#3A2B22;"></div>
+          <small>Tea Bark<br>#3A2B22</small>
+        </div>
+      </div>
+      <p class="footer-note">暖米白做大底，杏橙和珊瑚负责动作感与提醒感，深茶棕承担信息稳定性。</p>
+    </div>
+
+    <div class="panel">
+      <h3>字体和语气</h3>
+      <div class="type-stack">
+        <div class="type-card">
+          <div class="display">今天先把最重要的事安顿好</div>
+          <small>标题语气应该像温和的引导，不像系统广播。</small>
+        </div>
+        <div class="type-card">
+          <div class="bodycopy">正文保持高可读、低攻击性。后台和小程序都用清晰的人类语气，不堆技术话术，但关键状态要说得足够明确。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>组件情绪</h3>
+      <div class="token-list">
+        <div class="token"><small>卡片：圆角更大、边界更软，但不能过度奶油化</small></div>
+        <div class="token"><small>按钮：主按钮用暖梯度，次按钮用浅色边界，层级必须明确</small></div>
+        <div class="token"><small>状态：成功、风险、延期要比当前更友好，但不能失去辨识度</small></div>
+        <div class="token"><small>动效：以轻进入场、柔焦转场为主，不做炫技感动画</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="panel">
+      <h3>后台工作台气质</h3>
+      <div class="desktop-preview">
+        <div class="window"></div>
+        <div class="desktop-shell">
+          <div class="desk-bar"></div>
+          <div class="desk-grid">
+            <div class="box tall">
+              <div class="line accent" style="width: 62%;"></div>
+              <div class="line" style="width: 48%; margin-top: 10px;"></div>
+              <div class="line" style="width: 74%; margin-top: 22px;"></div>
+              <div class="line" style="width: 66%; margin-top: 10px;"></div>
+            </div>
+            <div class="box">
+              <div class="line accent" style="width: 58%;"></div>
+              <div class="line" style="width: 52%; margin-top: 10px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="footer-note">后台不做冷冰冰的表格系统，而是强调“系统正在被你温和而清楚地掌控”。</p>
+    </div>
+
+    <div class="panel">
+      <h3>小程序首页气质</h3>
+      <div class="mobile-preview">
+        <div class="mobile-shell">
+          <div class="mini-bar"></div>
+          <div class="box">
+            <div class="line accent" style="width: 70%;"></div>
+            <div class="line" style="width: 44%; margin-top: 10px;"></div>
+          </div>
+          <div class="box tall">
+            <div class="tabs">
+              <div class="tab active">日程</div>
+              <div class="tab">看板</div>
+              <div class="tab">规划</div>
+            </div>
+            <div class="line accent" style="width: 64%; margin-top: 14px;"></div>
+            <div class="line" style="width: 76%; margin-top: 14px;"></div>
+            <div class="line" style="width: 48%; margin-top: 10px;"></div>
+          </div>
+        </div>
+      </div>
+      <p class="footer-note">首页仍然是日程，但视觉上更像“今天被安排好了”，而不是密集的工具面板。</p>
+    </div>
+  </div>
+</div>

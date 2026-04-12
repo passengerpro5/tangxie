@@ -1,6 +1,87 @@
 <view class="detail-page">
-  <view class="detail-card">
-    <text class="detail-title">{{title}}</text>
-    <text class="detail-subtitle">{{subtitle}}</text>
+  <view class="detail-shell">
+    <view class="detail-hero">
+      <view class="detail-hero-top">
+        <text class="detail-hero-kicker">只读详情</text>
+        <text class="detail-hero-badge">温和治愈 · 效率优先</text>
+      </view>
+      <text class="detail-title">{{taskName}}</text>
+      <text class="detail-summary">{{summary}}</text>
+      <view class="detail-primary-meta">
+        <view class="detail-primary-meta-card detail-primary-meta-card-focus">
+          <text class="detail-meta-label">时间范围</text>
+          <text class="detail-meta-value">{{timeRangeLabel}}</text>
+        </view>
+        <view class="detail-primary-meta-card">
+          <text class="detail-meta-label">状态</text>
+          <text class="detail-meta-value">{{statusLabel}}</text>
+        </view>
+      </view>
+      <view wx:if="{{parentTaskTitle}}" class="detail-parent-line">
+        <text class="detail-parent-label">所属母任务</text>
+        <text class="detail-parent-value">{{parentTaskTitle}}</text>
+      </view>
+    </view>
+
+    <view class="detail-meta-grid">
+      <view class="detail-meta-tile">
+        <text class="detail-meta-label">截止时间</text>
+        <text class="detail-meta-value">{{deadlineLabel}}</text>
+      </view>
+      <view class="detail-meta-tile">
+        <text class="detail-meta-label">预计时长</text>
+        <text class="detail-meta-value">{{durationLabel}}</text>
+      </view>
+      <view class="detail-meta-tile">
+        <text class="detail-meta-label">优先级</text>
+        <text class="detail-meta-value">{{priorityLabel}}</text>
+      </view>
+      <view class="detail-meta-tile">
+        <text class="detail-meta-label">来源</text>
+        <text class="detail-meta-value">{{sourceLabel}}</text>
+      </view>
+      <view class="detail-meta-tile detail-meta-tile-wide">
+        <text class="detail-meta-label">分类</text>
+        <text class="detail-meta-value">{{categoryTitle}}</text>
+      </view>
+    </view>
+
+    <view class="detail-section-list">
+      <view wx:for="{{sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="id" class="detail-section-card">
+        <view class="detail-section-head">
+          <view>
+            <text class="detail-section-kicker">信息模块 {{sectionIndex + 1}}</text>
+            <text class="detail-section-title">{{section.title}}</text>
+          </view>
+          <text wx:if="{{section.summary}}" class="detail-section-copy">{{section.summary}}</text>
+        </view>
+        <view class="detail-section-items">
+          <view wx:for="{{section.items}}" wx:for-item="item" wx:key="id" class="detail-section-item">
+            <text class="detail-section-item-label">{{item.label}}</text>
+            <text class="detail-section-item-value">{{item.value}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="detail-history-card">
+      <view class="detail-section-head detail-history-head">
+        <view>
+          <text class="detail-section-kicker">时间线</text>
+          <text class="detail-section-title">历史记录</text>
+        </view>
+        <text class="detail-section-copy">保留任务从抽取到排期的变化痕迹。</text>
+      </view>
+      <view class="detail-history-list">
+        <view wx:for="{{history}}" wx:for-item="entry" wx:key="id" class="detail-history-item">
+          <view class="detail-history-marker"></view>
+          <view class="detail-history-body">
+            <text class="detail-history-title">{{entry.title}}</text>
+            <text class="detail-history-summary">{{entry.summary}}</text>
+            <text class="detail-history-time">{{entry.updatedAt}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </view>

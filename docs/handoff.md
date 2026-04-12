@@ -1,6 +1,6 @@
 # Session Handoff
 
-Last updated: 2026-04-10
+Last updated: 2026-04-11
 
 ## Goal
 
@@ -33,6 +33,25 @@ Move `apps/miniprogram` `安排任务` from the previous staged prototype flow i
 - `安排任务` now has two runtime modes:
   - legacy staged flow remains compatible for old tests and fallback behavior
   - preferred mode is AI-backed arrange chat using `/arrange/conversations*`
+- `任务看板` has now been substantially upgraded on the mini program frontend:
+  - no longer just status-based lightweight chips
+  - now renders a mini gantt summary at the top of the kanban tab
+  - now renders grouped task cards with category headings and weak separators
+  - task cards now expose title / summary / deadline / duration / priority
+  - tapping a task now opens a bottom half-sheet task detail panel with execution plan and suggestions
+- `排期` tab now exists on the mini program home screen as a separate surface from `日程`:
+  - `日程` remains the original time-axis page and should not be repurposed
+  - `排期` is now a dedicated gantt-style page
+  - current `排期` model is task-column-first:
+    - horizontal axis = tasks
+    - vertical axis = time/range slots
+    - period switch = `日 / 周 / 月 / 年`
+    - default = `日`, scoped to tasks that touch the active/current day
+- The data source is still mixed:
+  - `arrange_chat` confirm materializes real `Task + ScheduleBlock` records on the backend
+  - mini program home/task-board/planning now hydrate from backend `GET /tasks`
+  - task detail now refreshes from backend `GET /tasks/:id`
+  - the remaining gap is mainly manual runtime verification in WeChat DevTools, not the read-path switch itself
 
 ## Done In This Session
 
@@ -85,6 +104,98 @@ Move `apps/miniprogram` `安排任务` from the previous staged prototype flow i
   - real `/arrange/conversations/:id/messages` call succeeds
   - returned snapshot now contains concrete tasks and non-historical proposed block times
 - Kept mini program runtime `apiBaseUrl` override support in code/storage, but removed the visible in-sheet API editor from the UI.
+- Further refined `apps/miniprogram` arrange sheet UX:
+  - added a manual `+ 新会话` entry on the `安排任务` tab
+  - moved the composer send button inside the input shell and changed it to a Codex-like round icon button
+  - removed the large `开始规划` hero card and replaced it with a centered empty-state sentence
+  - removed the sheet close `×`; closing now relies on tapping the mask or dragging down the handle
+  - removed left/right/bottom sheet gaps so the sheet is edge-aligned
+  - tuned the bottom `安排任务` CTA size after UI feedback
+  - added sheet open/close motion so it no longer hard-cuts in/out
+  - reduced the motion amplitude after feedback that the bounce felt too hard
+- Tightened mini program feedback/toast behavior:
+  - top persistent notice/error banners were removed from the page
+  - feedback now uses centered toasts with a 3 second timeout
+  - low-value in-conversation success toasts were removed (`糖蟹已回复`, `已进入追问`, `补充信息已提交`, `已切换到新会话`)
+  - notification boundary is now:
+    - keep errors/blockers
+    - keep attachment-import success
+    - suppress chat-flow self-explanatory success messages inside the arrange sheet
+- Improved backend fallback assistant reply formatting in `apps/api`:
+  - fallback-expanded replies no longer expose raw ISO timestamps to users
+  - english priorities like `high` / `medium` are mapped into readable Chinese labels
+  - added arrange-chat API regression coverage for readable fallback formatting
+- Fixed a mini program page-state timing issue:
+  - async page actions now sync runtime state to the page immediately after the action starts, not only after it finishes
+  - this avoids “tap arrange, then wait for request, then sheet suddenly appears” behavior
+- Hardened mini program arrange-sheet interaction guards:
+  - blank draft submit is ignored
+  - blank clarification submit is ignored
+  - duplicate confirm taps while arrange-chat confirmation is in flight are ignored
+  - corresponding disabled states were added to the composer UI
+- Reworked mini program `任务看板` from a placeholder state-column list into a real product surface:
+  - `apps/miniprogram/components/kanban-view/*` now builds grouped board data plus a mini gantt summary
+  - `apps/miniprogram/pages/home/index.*` now renders:
+    - top mini gantt
+    - grouped task cards
+    - per-card metadata including summary / deadline / duration / priority
+  - task detail is now shown as a bottom half-sheet in `home`, not as a route jump
+  - task detail content is assembled via `createTaskDetailPage(...)` and now includes:
+    - summary
+    - category
+    - execution plan
+    - suggestions
+- Extended default/frontend-seeded task data so the new board and detail surfaces have real content:
+  - category ids/titles
+  - summary
+  - relative deadline labels (`今天` / `明天` / `4.x` / `明年`)
+  - execution plan rows
+  - suggestions
+  - schedule segments for gantt display
+- Added and passed new regression coverage for the board/detail upgrade:
+  - board view-model structure
+  - task detail model structure
+  - task detail open/close runtime state
+  - template structure for task board / task detail half-sheet
+  - style assertions for new board/detail classes
+- Closed the first backend data-bridge gap in `apps/api`:
+  - `ArrangeChatService.confirmConversation(...)` now creates real `Task` records
+  - the same confirm flow now creates real confirmed `ScheduleBlock` records
+  - confirmed conversation snapshots now rewrite proposed blocks with persisted task ids / block ids
+- Extended `tasks` API surfaces:
+  - added `GET /tasks`
+  - added `GET /tasks/:id`
+  - both endpoints now expose confirmed schedule blocks grouped by task
+- Added regression coverage for the real data bridge:
+  - arrange-chat confirm now proves `/tasks` and `/tasks/:id` can read back persisted records
+  - Prisma integration coverage now proves arrange-chat confirmations persist `Task + ScheduleBlock` across app handler instances
+- Reworked the mini program home tabs again after a regression was reported:
+  - fixed a bad intermediate state where `日程` was accidentally replaced by a list-style page
+  - restored `日程` to the original timeline/time-axis view
+  - kept `任务看板` as the grouped-card + mini-gantt surface
+  - moved the new planning work into `排期` only
+- Added a first dedicated `排期` gantt implementation on the mini program frontend:
+  - `apps/miniprogram/pages/home/index.*` now exposes `planningView`
+  - period switching is now handled by `switchHomePlanningPeriod(...)`
+  - `排期` template now renders:
+    - period chips (`日 / 周 / 月 / 年`)
+    - task columns
+    - vertical range slots
+    - gantt bars per task column
+- Added and passed new regression coverage for the planning tab:
+  - `home-page` now verifies period switching and task-column-first planning data
+  - `smoke` now verifies planning template bindings and styles
+  - `home-runtime` remains green after the new planning tab event wiring
+- Switched mini program task read paths to backend read models:
+  - `apps/miniprogram/services/api.*` now exposes `GET /tasks` and `GET /tasks/:id`
+  - `apps/miniprogram/pages/home/runtime.*` now:
+    - loads backend tasks on page boot/runtime hydration
+    - reloads backend tasks after arrange-chat confirm
+    - fetches fresh task detail from `/tasks/:id` when opening the half-sheet
+  - homepage board/planning views are now rebuilt from backend task payloads instead of relying on seeded refresh-only data
+- Removed the mini-gantt summary block from the mini program `任务看板` tab:
+  - the board now starts directly with grouped task cards
+  - related template/style/assertion coverage was updated and stays green
 
 ## Manual Verification Status
 
@@ -102,6 +213,29 @@ Move `apps/miniprogram` `安排任务` from the previous staged prototype flow i
   - send message appends user and assistant turns
   - `历史记录` reopens existing conversation
   - confirm flow refreshes the home page
+  - `排期` tab still needs real-device verification for the new task-column gantt model
+- No manual WeChat DevTools validation was completed in this session after the latest UI pass.
+- The newest UI changes specifically still need real-device/DevTools verification for:
+  - the new centered empty-state text in blank conversations
+  - the `+ 新会话` placement and behavior
+  - the in-input round send button styling
+  - centered toast interruption level and 3-second timeout
+  - sheet motion feel after the latest reduction in animation amplitude
+- No manual WeChat DevTools verification was completed for the latest backend-read-path switch and task-board simplification in this session.
+- The new board/planning-specific manual verification gap is:
+  - grouped card spacing and weak separators in WeChat DevTools
+  - card summary truncation feel
+  - detail half-sheet height, scrolling, and close feel
+  - tap target reliability for opening task detail
+  - backend-loaded board/detail data consistency after app cold start
+  - `排期` tab `日 / 周 / 月 / 年` switching, bidirectional scroll stability, and narrow-screen density
+- No manual WeChat DevTools verification was completed for the new planning-tab gantt redesign in this session.
+- The new planning-tab-specific manual verification gap is:
+  - `日` 维度是否真的只显示当天涉及任务
+  - `周 / 月 / 年` 切换后的纵轴刻度是否符合预期且文案可读
+  - 任务列宽、条块高度、文本截断在 WeChat DevTools 中是否过密
+  - 横向滚动与纵向滚动的手感是否稳定
+  - iPhone 窄屏下是否还会出现标题/周期 chip 挤压
 
 ## Verified Commands
 
@@ -128,6 +262,27 @@ cd apps/api
 node --experimental-strip-types --test test/provider-client.spec.ts test/arrange-chat.e2e-spec.ts test/cors.e2e-spec.ts test/prisma-schema.spec.ts
 ```
 
+```bash
+cd apps/api
+node --experimental-strip-types --test test/arrange-chat.e2e-spec.ts test/provider-client.spec.ts test/cors.e2e-spec.ts
+```
+
+```bash
+node --experimental-strip-types --test apps/miniprogram/tests/runtime-config.spec.ts apps/miniprogram/tests/home-page.spec.ts apps/miniprogram/tests/home-runtime.spec.ts apps/miniprogram/tests/arrange-flow.spec.ts apps/miniprogram/tests/smoke.spec.ts
+```
+
+```bash
+node --experimental-strip-types --test apps/miniprogram/tests/home-page.spec.ts
+```
+
+```bash
+node --experimental-strip-types --test apps/miniprogram/tests/home-runtime.spec.ts apps/miniprogram/tests/smoke.spec.ts
+```
+
+```bash
+node --experimental-strip-types --test apps/miniprogram/tests/home-page.spec.ts apps/miniprogram/tests/smoke.spec.ts apps/miniprogram/tests/home-runtime.spec.ts
+```
+
 ## Important Files
 
 - `apps/api/src/app.module.ts`
@@ -141,11 +296,20 @@ node --experimental-strip-types --test test/provider-client.spec.ts test/arrange
 - `apps/admin/src/ui/admin-shell-app.tsx`
 - `apps/miniprogram/services/api.ts`
 - `apps/miniprogram/services/api.js`
+- `apps/miniprogram/components/arrange-sheet/index.ts`
+- `apps/miniprogram/components/arrange-sheet/index.js`
+- `apps/miniprogram/components/kanban-view/index.ts`
+- `apps/miniprogram/components/kanban-view/index.js`
+- `apps/miniprogram/pages/home/index.wxml`
+- `apps/miniprogram/pages/home/index.wxss`
+- `apps/miniprogram/pages/home/index.ts`
 - `apps/miniprogram/pages/home/runtime.ts`
 - `apps/miniprogram/pages/home/runtime.js`
-- `apps/miniprogram/components/arrange-sheet/index.ts`
+- `apps/miniprogram/pages/task-detail/index.ts`
+- `apps/miniprogram/pages/task-detail/index.js`
 - `apps/miniprogram/tests/home-page.spec.ts`
 - `apps/miniprogram/tests/home-runtime.spec.ts`
+- `apps/miniprogram/tests/smoke.spec.ts`
 - `apps/api/test/arrange-chat.e2e-spec.ts`
 - `docs/todo.md`
 
@@ -165,24 +329,61 @@ node --experimental-strip-types --test test/provider-client.spec.ts test/arrange
   - `arrange_chat` model binding and active prompt are configured
   - real API conversation flow is green
 - The main remaining risk is now mini program runtime/manual verification, especially API base URL configuration in WeChat DevTools if `127.0.0.1:3000` is not reachable from the current device/runtime.
-- The planner sheet visual fidelity work was intentionally paused in this session. Do not confuse the new chat runtime with a finished UI polish pass.
+- The planner sheet is much closer, but the latest UX decisions are still provisional until manual verification confirms the feel:
+  - toast importance thresholds may still need another pass
+  - the new sheet motion may still feel too hard/too soft in DevTools
+  - empty-state spacing and bottom CTA size may still need one more visual adjustment
+- The arrange-chat backend fallback is safer now, but prompt quality still matters; nonsensical decompositions can still originate upstream from the model/prompt pair and are no longer explained away as a frontend problem.
+- The biggest architectural gap has shifted:
+  - frontend task-board UX is now ahead of backend data unification
+  - `arrange_chat` confirm still does not create real backend `Task + ScheduleBlock` rows
+  - `tasks` still lacks a list/detail read API for the mini program
+  - the current task board is therefore still seeded/refreshed from frontend state rather than a unified backend query
+- The current `kanban-view` builder is intentionally frontend-oriented:
+  - good enough for product/UI validation
+  - but likely to be re-fed by real backend task/detail payloads later
+- `task-detail` route still exists but is not the primary UX path anymore:
+  - the active experience is the bottom half-sheet rendered inside `home`
+  - the route file is mainly useful as a shared detail-model builder for now
 
 ## Next Recommended Step
 
-Continue from mini program manual verification, not from old timeline or staged-flow debugging.
+Continue from backend data unification plus targeted DevTools verification, not from old timeline debugging.
 
 Suggested order:
 
 1. Keep `apps/api` running in DB-backed mode on `127.0.0.1:3000`.
 2. Keep `apps/admin` running on `127.0.0.1:4173` only if you still need to inspect provider/model/prompt state.
-3. Open the mini program in WeChat DevTools and verify:
-   - open sheet creates a conversation
-   - send message appends user + assistant turns
+3. On the backend, unify real task/schedule writes before more UI polish:
+  - this write-path work is now landed
+  - the next backend step is switching read-path consumers to `/tasks` / `/tasks/:id`
+4. After that backend read-path work, open the mini program in WeChat DevTools and verify:
+   - open sheet animation feels natural enough after the latest reduction in motion amplitude
+   - blank conversation shows only the centered empty-state sentence and no fake hero card
+   - sending a message removes the empty-state sentence immediately
+   - `糖蟹已回复`-type low-value toasts no longer appear inside the arrange sheet
+   - `+ 新会话` creates a fresh conversation without noisy success toasts
+   - send/attachment controls look balanced in WeChat DevTools, not just in static screenshots
    - `历史记录` can reopen an old conversation
    - confirm flow refreshes the home page
-4. If the mini program cannot reach the API, verify the runtime `apiBaseUrl` override rather than changing backend logic first.
-5. Only after the real chat loop is stable in DevTools, resume planner-sheet visual fidelity work.
+   - the new task-board mini gantt renders at the right density
+   - grouped card spacing and truncation feel intentional
+   - tapping cards reliably opens the half-sheet
+   - task detail half-sheet content is readable and scrolls correctly
+   - the new `排期` tab really behaves like a gantt surface, not like the original `日程` page
+   - `排期` default `日` 维度是否只呈现当天涉及任务列
+   - `周 / 月 / 年` 切换是否仍然可用、可读、可滚动
+5. If odd assistant text still appears, inspect the latest provider response and prompt/model quality before blaming the frontend. The fallback-formatting bug for ISO timestamps and english priority labels has already been fixed.
+6. If the mini program cannot reach the API, verify the runtime `apiBaseUrl` override rather than changing backend logic first.
+7. Only after the real chat loop and task board feel stable in DevTools, continue visual polish on spacing, typography, priority tagging, and detail actions.
 
 ## Resume Instruction
 
-If a future session receives a resume/handoff message, read this file first, then `docs/todo.md`, then continue from mini program manual verification on top of the already-working API/admin/provider integration. Do not reopen timeline debugging unless new evidence shows regression.
+If a future session receives a resume/handoff message, read this file first, then `docs/todo.md`, then continue from:
+
+1. backend task/schedule unification
+2. switch mini program home/task-board/detail to the new `/tasks` read APIs
+3. decide whether the new planning-tab gantt should also switch to `/tasks`-backed real data immediately or stay on temporary frontend-shaped data until the read model is richer
+4. WeChat DevTools verification for the new task board, planning tab, and existing arrange sheet
+
+Do not reopen timeline debugging or “frontend cut off long reply” debugging unless there is genuinely new evidence; the latest relevant backend formatting and reply-expansion fixes are already in place.

@@ -4,6 +4,42 @@ import test from "node:test";
 import { createHomePageRuntime } from "../pages/home/runtime.ts";
 import { DEFAULT_MINIPROGRAM_API_BASE_URL } from "../config/runtime.ts";
 
+function withFrozenSystemTime<T>(isoTimestamp: string, run: () => T | Promise<T>): T | Promise<T> {
+  const RealDate = Date;
+  const frozenTime = new RealDate(isoTimestamp).getTime();
+
+  class FrozenDate extends RealDate {
+    constructor(...args: ConstructorParameters<DateConstructor>) {
+      if (args.length === 0) {
+        super(frozenTime);
+        return;
+      }
+
+      super(...args);
+    }
+
+    static now() {
+      return frozenTime;
+    }
+  }
+
+  globalThis.Date = FrozenDate as DateConstructor;
+  try {
+    const result = run();
+    if (result && typeof (result as PromiseLike<T>).then === "function") {
+      return Promise.resolve(result).finally(() => {
+        globalThis.Date = RealDate;
+      });
+    }
+
+    globalThis.Date = RealDate;
+    return result;
+  } catch (error) {
+    globalThis.Date = RealDate;
+    throw error;
+  }
+}
+
 test("home runtime exposes loading, error, and sheet state for the core flow", async () => {
   const runtime = createHomePageRuntime({
     apiClient: {
@@ -69,8 +105,7 @@ test("home runtime exposes loading, error, and sheet state for the core flow", a
   runtime.openArrangeSheet();
   assert.equal(runtime.state.sheetOpen, true);
   assert.equal(runtime.state.arrangeTab, "arrange");
-  assert.equal(runtime.state.home.arrangeSheet.threadItems[0]?.kind, "hero");
-  assert.equal(runtime.state.home.arrangeSheet.threadItems[0]?.title, "开始规划");
+  assert.equal(runtime.state.home.arrangeSheet.threadItems.length, 0);
 
   runtime.setDraftText("周五前交论文初稿");
   assert.equal(runtime.state.draftText.includes("论文初稿"), true);
@@ -79,10 +114,12 @@ test("home runtime exposes loading, error, and sheet state for the core flow", a
   assert.equal(afterDraft.stage, "clarifying");
   assert.equal(runtime.state.nextQuestion, "这个任务大概需要多久完成？");
   assert.equal(runtime.state.loading, false);
+  assert.equal(runtime.state.notice, null);
 
   const afterReply = await runtime.submitClarification("2小时");
   assert.equal(afterReply.stage, "ready_to_schedule");
   assert.equal(runtime.state.stage, "ready_to_schedule");
+  assert.equal(runtime.state.notice, null);
 
   const afterPropose = await runtime.proposeSchedule();
   assert.equal(afterPropose.stage, "confirmed");
@@ -430,9 +467,148 @@ test("home runtime can start a new arrange conversation from the arrange tab wit
   assert.equal(runtime.state.answerText, "");
   assert.equal(runtime.state.attachmentPickerOpen, false);
   assert.equal(runtime.state.stage, "idle");
-  assert.equal(runtime.state.home.arrangeSheet.threadItems[0]?.kind, "hero");
+  assert.equal(runtime.state.notice, null);
+  assert.equal(runtime.state.home.arrangeSheet.threadItems.length, 0);
   assert.equal(runtime.state.home.arrangeSheet.history[0]?.id, "conv_2");
   assert.equal(runtime.state.home.arrangeSheet.history[1]?.id, "conv_1");
+});
+
+test("home runtime promotes ready-to-confirm cards into an arrange action and collapses them into an arranged divider after confirmation", async () => {
+  let confirmCalls = 0;
+
+  const runtime = createHomePageRuntime({
+    apiClient: {
+      async createArrangeConversation() {
+        return {
+          conversation: {
+            id: "conv_1",
+            title: "论文安排",
+            summary: "当前安排已经整理完成，可以继续修改或直接确认。",
+            status: "active",
+            createdAt: "2026-04-09T00:00:00.000Z",
+            updatedAt: "2026-04-09T00:00:00.000Z",
+            lastMessageAt: "2026-04-09T00:00:00.000Z",
+          },
+          messages: [
+            {
+              id: "msg_1",
+              conversationId: "conv_1",
+              role: "assistant",
+              content: "我已经把上班时间整理成一段可直接确认的安排。",
+              createdAt: "2026-04-09T00:00:30.000Z",
+            },
+          ],
+          snapshot: {
+            title: "可以确认安排",
+            summary: "当前安排已经整理完成，可以继续修改或直接确认。",
+            tasks: [],
+            proposedBlocks: [],
+            readyToConfirm: true,
+          },
+        } as never;
+      },
+      async listArrangeConversations() {
+        return {
+          items: [
+            {
+              id: "conv_1",
+              title: "论文安排",
+              summary: "当前安排已经整理完成，可以继续修改或直接确认。",
+              status: "active",
+              createdAt: "2026-04-09T00:00:00.000Z",
+              updatedAt: "2026-04-09T00:01:00.000Z",
+              lastMessageAt: "2026-04-09T00:01:00.000Z",
+            },
+          ],
+        } as never;
+      },
+      async getArrangeConversation() {
+        throw new Error("not used");
+      },
+      async sendArrangeConversationMessage() {
+        throw new Error("not used");
+      },
+      async confirmArrangeConversation(conversationId) {
+        confirmCalls += 1;
+        assert.equal(conversationId, "conv_1");
+        return {
+          conversation: {
+            id: "conv_1",
+            title: "论文安排",
+            summary: "已安排",
+            status: "confirmed",
+            createdAt: "2026-04-09T00:00:00.000Z",
+            updatedAt: "2026-04-09T00:05:00.000Z",
+            lastMessageAt: "2026-04-09T00:05:00.000Z",
+          },
+          snapshot: {
+            title: "论文安排",
+            summary: "已安排",
+            tasks: [],
+            proposedBlocks: [
+              {
+                id: "block_1",
+                taskId: "task_1",
+                title: "上班",
+                startAt: "2026-04-14T02:00:00.000Z",
+                endAt: "2026-04-14T10:30:00.000Z",
+                durationMinutes: 510,
+                status: "confirmed",
+              },
+            ],
+            readyToConfirm: true,
+          },
+          confirmedBlocks: [
+            {
+              id: "block_1",
+              taskId: "task_1",
+              title: "上班",
+              startAt: "2026-04-14T02:00:00.000Z",
+              endAt: "2026-04-14T10:30:00.000Z",
+              durationMinutes: 510,
+              status: "confirmed",
+            },
+          ],
+        } as never;
+      },
+      async intakeTask() {
+        throw new Error("not used");
+      },
+      async replyClarification() {
+        throw new Error("not used");
+      },
+      async proposeSchedule() {
+        throw new Error("not used");
+      },
+      async confirmSchedule() {
+        throw new Error("not used");
+      },
+      async generateReminders() {
+        throw new Error("not used");
+      },
+    },
+  });
+
+  await runtime.openArrangeSheet();
+  assert.equal(
+    runtime.state.home.arrangeSheet.threadItems.some(
+      (item) => item.kind === "ready" && item.actionLabel === "安排" && item.title === "可以确认安排",
+    ),
+    true,
+  );
+
+  const result = await runtime.proposeSchedule();
+  assert.equal(result.stage, "confirmed");
+  assert.equal(confirmCalls, 1);
+  assert.equal(runtime.state.stage, "confirmed");
+  assert.equal(runtime.state.home.arrangeSheet.threadItems.some((item) => item.kind === "ready"), false);
+  assert.equal(runtime.state.home.arrangeSheet.threadItems.some((item) => item.kind === "confirmed"), false);
+  assert.equal(
+    runtime.state.home.arrangeSheet.threadItems.some(
+      (item) => item.kind === "status_divider" && item.title === "已安排",
+    ),
+    true,
+  );
 });
 
 test("home runtime shows optimistic user and thinking states while arrange chat is in flight and ignores duplicate submits", async () => {
@@ -559,6 +735,207 @@ test("home runtime shows optimistic user and thinking states while arrange chat 
   );
 });
 
+test("home runtime ignores empty draft and clarification submits", async () => {
+  let sendCalls = 0;
+  let replyCalls = 0;
+  const runtime = createHomePageRuntime({
+    apiClient: {
+      async createArrangeConversation() {
+        return {
+          conversation: {
+            id: "conv_1",
+            title: "新对话",
+            summary: null,
+            status: "active",
+            createdAt: "2026-04-09T00:00:00.000Z",
+            updatedAt: "2026-04-09T00:00:00.000Z",
+            lastMessageAt: "2026-04-09T00:00:00.000Z",
+          },
+          messages: [],
+          snapshot: {
+            title: null,
+            summary: null,
+            tasks: [],
+            proposedBlocks: [],
+            readyToConfirm: false,
+          },
+        } as never;
+      },
+      async listArrangeConversations() {
+        return { items: [] } as never;
+      },
+      async getArrangeConversation() {
+        throw new Error("not used");
+      },
+      async sendArrangeConversationMessage() {
+        sendCalls += 1;
+        throw new Error("not used");
+      },
+      async confirmArrangeConversation() {
+        throw new Error("not used");
+      },
+      async intakeTask() {
+        return {
+          task: { id: "task_1", status: "needs_info" },
+          clarificationSession: { id: "session_1", status: "active" },
+          missingFields: ["deadlineAt"],
+          nextQuestion: "什么时候截止？",
+        } as never;
+      },
+      async replyClarification() {
+        replyCalls += 1;
+        throw new Error("not used");
+      },
+      async proposeSchedule() {
+        throw new Error("not used");
+      },
+      async confirmSchedule() {
+        throw new Error("not used");
+      },
+      async generateReminders() {
+        throw new Error("not used");
+      },
+    },
+  });
+
+  await runtime.openArrangeSheet();
+  runtime.setDraftText("   ");
+  const idleResult = await runtime.submitDraft();
+  assert.equal(idleResult.stage, "idle");
+  assert.equal(sendCalls, 0);
+  assert.equal(runtime.state.home.arrangeSheet.threadItems.length, 0);
+
+  await runtime.submitAttachment({
+    name: "纤维瘤提取.docx",
+    kind: "doc",
+    fileName: "纤维瘤提取.docx",
+  });
+  runtime.setAnswerText("   ");
+  const clarificationResult = await runtime.submitClarification();
+  assert.equal(clarificationResult.stage, "clarifying");
+  assert.equal(replyCalls, 0);
+});
+
+test("home runtime ignores duplicate confirm requests while arrange chat confirmation is in flight", async () => {
+  let resolveConfirm: ((value: unknown) => void) | null = null;
+  let confirmCalls = 0;
+
+  const runtime = createHomePageRuntime({
+    apiClient: {
+      async createArrangeConversation() {
+        return {
+          conversation: {
+            id: "conv_1",
+            title: "新对话",
+            summary: null,
+            status: "active",
+            createdAt: "2026-04-09T00:00:00.000Z",
+            updatedAt: "2026-04-09T00:00:00.000Z",
+            lastMessageAt: "2026-04-09T00:00:00.000Z",
+          },
+          messages: [],
+          snapshot: {
+            title: null,
+            summary: null,
+            tasks: [],
+            proposedBlocks: [],
+            readyToConfirm: false,
+          },
+        } as never;
+      },
+      async listArrangeConversations() {
+        return { items: [] } as never;
+      },
+      async getArrangeConversation() {
+        throw new Error("not used");
+      },
+      async sendArrangeConversationMessage() {
+        throw new Error("not used");
+      },
+      async confirmArrangeConversation(conversationId) {
+        confirmCalls += 1;
+        assert.equal(conversationId, "conv_1");
+        return await new Promise((resolve) => {
+          resolveConfirm = resolve;
+        });
+      },
+      async intakeTask() {
+        throw new Error("not used");
+      },
+      async replyClarification() {
+        throw new Error("not used");
+      },
+      async proposeSchedule() {
+        throw new Error("not used");
+      },
+      async confirmSchedule() {
+        throw new Error("not used");
+      },
+      async generateReminders() {
+        throw new Error("not used");
+      },
+    },
+  });
+
+  await runtime.openArrangeSheet();
+  runtime.state.currentConversationId = "conv_1";
+  runtime.state.stage = "ready_to_schedule";
+
+  const pending = runtime.proposeSchedule();
+  const duplicate = runtime.proposeSchedule();
+
+  assert.equal(runtime.state.loading, true);
+
+  await Promise.resolve();
+
+  resolveConfirm?.({
+    conversation: {
+      id: "conv_1",
+      title: "论文安排",
+      summary: "可以确认。",
+      status: "confirmed",
+      createdAt: "2026-04-09T00:00:00.000Z",
+      updatedAt: "2026-04-09T00:05:00.000Z",
+      lastMessageAt: "2026-04-09T00:05:00.000Z",
+    },
+    snapshot: {
+      title: "论文安排",
+      summary: "可以确认。",
+      tasks: [],
+      proposedBlocks: [
+        {
+          id: "block_1",
+          taskId: "task_1",
+          title: "论文初稿",
+          startAt: "2026-04-09T09:00:00.000Z",
+          endAt: "2026-04-09T11:00:00.000Z",
+          durationMinutes: 120,
+          status: "confirmed",
+        },
+      ],
+      readyToConfirm: true,
+    },
+    confirmedBlocks: [
+      {
+        id: "block_1",
+        taskId: "task_1",
+        title: "论文初稿",
+        startAt: "2026-04-09T09:00:00.000Z",
+        endAt: "2026-04-09T11:00:00.000Z",
+        durationMinutes: 120,
+        status: "confirmed",
+      },
+    ],
+  });
+
+  const firstResult = await pending;
+  const secondResult = await duplicate;
+  assert.equal(firstResult.stage, "confirmed");
+  assert.equal(secondResult.stage, "ready_to_schedule");
+  assert.equal(confirmCalls, 1);
+  assert.equal(runtime.state.loading, false);
+});
+
 test("home runtime supports attachment intake and moves into clarification with extracted content", async () => {
   const runtime = createHomePageRuntime({
     apiClient: {
@@ -652,4 +1029,347 @@ test("home runtime exposes and updates the mini program api base URL override", 
       };
     }).wx = previousWx;
   }
+});
+
+test("home runtime can open and close task detail from the kanban board", async () => {
+  const runtime = createHomePageRuntime({
+    apiClient: {
+      async intakeTask() {
+        throw new Error("not used");
+      },
+      async replyClarification() {
+        throw new Error("not used");
+      },
+      async proposeSchedule() {
+        throw new Error("not used");
+      },
+      async confirmSchedule() {
+        throw new Error("not used");
+      },
+      async generateReminders() {
+        throw new Error("not used");
+      },
+    },
+  });
+
+  await runtime.openTaskDetail("task-1");
+  assert.equal(runtime.state.taskDetailVisible, true);
+  assert.equal(runtime.state.selectedTaskId, "task-1");
+
+  runtime.closeTaskDetail();
+  assert.equal(runtime.state.taskDetailVisible, false);
+  assert.equal(runtime.state.selectedTaskId, null);
+});
+
+test("home runtime loads backend tasks read model and refreshes task detail from `/tasks/:id`", async () => {
+  await withFrozenSystemTime("2026-04-11T09:00:00.000Z", async () => {
+    let detailRequestCount = 0;
+    const runtime = createHomePageRuntime({
+      apiClient: {
+        async listTasks() {
+          return {
+            items: [
+              {
+                id: "task_api_1",
+                title: "真实任务",
+                description: "从后端读模型返回的任务说明。",
+                sourceType: "text",
+                status: "scheduled",
+                deadlineAt: "2026-04-11T11:00:00.000Z",
+                estimatedDurationMinutes: 120,
+                priorityScore: 90,
+                priorityRank: 1,
+                importanceReason: "deadline=2026-04-11T11:00:00.000Z, duration=120m",
+                createdByAI: true,
+                userConfirmed: true,
+                createdAt: "2026-04-11T08:00:00.000Z",
+                updatedAt: "2026-04-11T08:30:00.000Z",
+                scheduleBlocks: [
+                  {
+                    id: "block_api_1",
+                    taskId: "task_api_1",
+                    title: "真实任务",
+                    startAt: "2026-04-11T09:00:00.000Z",
+                    endAt: "2026-04-11T11:00:00.000Z",
+                    durationMinutes: 120,
+                    status: "confirmed",
+                  },
+                ],
+              },
+              {
+                id: "task_api_2",
+                title: "明天任务",
+                description: "用于验证相对日期。",
+                sourceType: "text",
+                status: "scheduled",
+                deadlineAt: "2026-04-12T10:00:00.000Z",
+                estimatedDurationMinutes: 90,
+                priorityScore: 80,
+                priorityRank: 2,
+                importanceReason: "deadline=2026-04-12T10:00:00.000Z, duration=90m",
+                createdByAI: true,
+                userConfirmed: true,
+                createdAt: "2026-04-11T08:00:00.000Z",
+                updatedAt: "2026-04-11T08:30:00.000Z",
+                scheduleBlocks: [
+                  {
+                    id: "block_api_2",
+                    taskId: "task_api_2",
+                    title: "明天任务",
+                    startAt: "2026-04-12T09:00:00.000Z",
+                    endAt: "2026-04-12T10:30:00.000Z",
+                    durationMinutes: 90,
+                    status: "confirmed",
+                  },
+                ],
+              },
+              {
+                id: "task_api_3",
+                title: "明年任务",
+                description: "用于验证跨年相对日期。",
+                sourceType: "text",
+                status: "scheduled",
+                deadlineAt: "2027-01-06T10:00:00.000Z",
+                estimatedDurationMinutes: 60,
+                priorityScore: 70,
+                priorityRank: 3,
+                importanceReason: "deadline=2027-01-06T10:00:00.000Z, duration=60m",
+                createdByAI: true,
+                userConfirmed: true,
+                createdAt: "2026-04-11T08:00:00.000Z",
+                updatedAt: "2026-04-11T08:30:00.000Z",
+                scheduleBlocks: [
+                  {
+                    id: "block_api_3",
+                    taskId: "task_api_3",
+                    title: "明年任务",
+                    startAt: "2027-01-06T09:00:00.000Z",
+                    endAt: "2027-01-06T10:00:00.000Z",
+                    durationMinutes: 60,
+                    status: "confirmed",
+                  },
+                ],
+              },
+            ],
+          } as never;
+        },
+        async getTask(taskId) {
+          detailRequestCount += 1;
+          assert.equal(taskId, "task_api_1");
+          return {
+            task: {
+              id: "task_api_1",
+              title: "真实任务",
+              description: "从 `/tasks/:id` 刷新的任务详情。",
+              sourceType: "text",
+              status: "scheduled",
+              deadlineAt: "2026-04-11T11:00:00.000Z",
+              estimatedDurationMinutes: 120,
+              priorityScore: 90,
+              priorityRank: 1,
+              importanceReason: "deadline=2026-04-11T11:00:00.000Z, duration=120m",
+              createdByAI: true,
+              userConfirmed: true,
+              createdAt: "2026-04-11T08:00:00.000Z",
+              updatedAt: "2026-04-11T08:45:00.000Z",
+            },
+            scheduleBlocks: [
+              {
+                id: "block_api_1",
+                taskId: "task_api_1",
+                title: "真实任务",
+                startAt: "2026-04-11T09:00:00.000Z",
+                endAt: "2026-04-11T11:00:00.000Z",
+                durationMinutes: 120,
+                status: "confirmed",
+              },
+            ],
+          } as never;
+        },
+        async intakeTask() {
+          throw new Error("not used");
+        },
+        async replyClarification() {
+          throw new Error("not used");
+        },
+        async proposeSchedule() {
+          throw new Error("not used");
+        },
+        async confirmSchedule() {
+          throw new Error("not used");
+        },
+        async generateReminders() {
+          throw new Error("not used");
+        },
+      },
+    });
+
+    await runtime.loadTasks();
+    assert.equal(runtime.state.home.tasks.length, 3);
+    assert.equal(runtime.state.home.tasks[0]?.id, "task_api_1");
+    assert.equal(runtime.state.home.kanbanView.groups[0]?.tasks[0]?.id, "task_api_1");
+    assert.equal(runtime.state.home.planningView.taskColumns[0]?.id, "task_api_1");
+    assert.equal(runtime.state.home.tasks.find((task) => task.id === "task_api_1")?.deadlineLabel, "今天");
+    assert.equal(runtime.state.home.tasks.find((task) => task.id === "task_api_2")?.deadlineLabel, "明天");
+    assert.equal(runtime.state.home.tasks.find((task) => task.id === "task_api_3")?.deadlineLabel, "明年");
+    assert.equal(
+      runtime.state.home.tasks.find((task) => task.id === "task_api_1")?.executionPlan[0]?.label.startsWith("今天 "),
+      true,
+    );
+
+    await runtime.openTaskDetail("task_api_1");
+    assert.equal(runtime.state.taskDetailVisible, true);
+    assert.equal(runtime.state.selectedTaskId, "task_api_1");
+    assert.equal(detailRequestCount, 1);
+    assert.equal(
+      runtime.state.home.tasks.find((task) => task.id === "task_api_1")?.summary,
+      "从 `/tasks/:id` 刷新的任务详情。",
+    );
+
+    runtime.closeTaskDetail();
+    assert.equal(runtime.state.taskDetailVisible, false);
+    assert.equal(runtime.state.selectedTaskId, null);
+  });
+});
+
+test("home runtime persists a dragged schedule block and refreshes the edited task", async () => {
+  await withFrozenSystemTime("2026-04-11T09:00:00.000Z", async () => {
+    const updateCalls: Array<{ taskId: string; blockId: string; startAt: string; endAt: string }> = [];
+    const runtime = createHomePageRuntime({
+      apiClient: {
+        async listTasks() {
+          return {
+            items: [
+              {
+                id: "task_api_1",
+                title: "真实任务",
+                description: "初始任务说明。",
+                sourceType: "text",
+                status: "scheduled",
+                deadlineAt: "2026-04-11T11:00:00.000Z",
+                estimatedDurationMinutes: 120,
+                priorityScore: 90,
+                priorityRank: 1,
+                importanceReason: "deadline=2026-04-11T11:00:00.000Z, duration=120m",
+                createdByAI: true,
+                userConfirmed: true,
+                createdAt: "2026-04-11T08:00:00.000Z",
+                updatedAt: "2026-04-11T08:30:00.000Z",
+                scheduleBlocks: [
+                  {
+                    id: "block_api_1",
+                    taskId: "task_api_1",
+                    title: "真实任务",
+                    startAt: "2026-04-11T09:00:00.000Z",
+                    endAt: "2026-04-11T11:00:00.000Z",
+                    durationMinutes: 120,
+                    status: "confirmed",
+                  },
+                ],
+              },
+            ],
+          } as never;
+        },
+        async getTask(taskId) {
+          assert.equal(taskId, "task_api_1");
+          return {
+            task: {
+              id: "task_api_1",
+              title: "真实任务",
+              description: "拖拽后回刷的任务说明。",
+              sourceType: "text",
+              status: "scheduled",
+              deadlineAt: "2026-04-11T11:30:00.000Z",
+              estimatedDurationMinutes: 120,
+              priorityScore: 90,
+              priorityRank: 1,
+              importanceReason: "deadline=2026-04-11T11:30:00.000Z, duration=120m",
+              createdByAI: true,
+              userConfirmed: true,
+              createdAt: "2026-04-11T08:00:00.000Z",
+              updatedAt: "2026-04-11T08:45:00.000Z",
+            },
+            scheduleBlocks: [
+              {
+                id: "block_api_1",
+                taskId: "task_api_1",
+                title: "真实任务",
+                startAt: "2026-04-11T09:30:00.000Z",
+                endAt: "2026-04-11T11:30:00.000Z",
+                durationMinutes: 120,
+                status: "confirmed",
+              },
+            ],
+          } as never;
+        },
+        async updateTaskScheduleBlock(taskId, blockId, payload) {
+          updateCalls.push({ taskId, blockId, startAt: payload.startAt, endAt: payload.endAt });
+          return {
+            task: {
+              id: "task_api_1",
+              title: "真实任务",
+              description: "拖拽后回刷的任务说明。",
+              sourceType: "text",
+              status: "scheduled",
+              deadlineAt: "2026-04-11T11:30:00.000Z",
+              estimatedDurationMinutes: 120,
+              priorityScore: 90,
+              priorityRank: 1,
+              importanceReason: "deadline=2026-04-11T11:30:00.000Z, duration=120m",
+              createdByAI: true,
+              userConfirmed: true,
+              createdAt: "2026-04-11T08:00:00.000Z",
+              updatedAt: "2026-04-11T08:45:00.000Z",
+            },
+            scheduleBlocks: [
+              {
+                id: "block_api_1",
+                taskId: "task_api_1",
+                title: "真实任务",
+                startAt: payload.startAt,
+                endAt: payload.endAt,
+                durationMinutes: 120,
+                status: "confirmed",
+              },
+            ],
+          } as never;
+        },
+        async intakeTask() {
+          throw new Error("not used");
+        },
+        async replyClarification() {
+          throw new Error("not used");
+        },
+        async proposeSchedule() {
+          throw new Error("not used");
+        },
+        async confirmSchedule() {
+          throw new Error("not used");
+        },
+        async generateReminders() {
+          throw new Error("not used");
+        },
+      },
+    });
+
+    await runtime.loadTasks();
+    const updated = await runtime.updateTaskScheduleBlock("task_api_1", "block_api_1", {
+      startAt: "2026-04-11T09:30:00.000Z",
+      endAt: "2026-04-11T11:30:00.000Z",
+    });
+
+    assert.equal(updateCalls.length, 1);
+    assert.deepEqual(updateCalls[0], {
+      taskId: "task_api_1",
+      blockId: "block_api_1",
+      startAt: "2026-04-11T09:30:00.000Z",
+      endAt: "2026-04-11T11:30:00.000Z",
+    });
+    assert.equal(updated.scheduleBlocks[0]?.startAt, "2026-04-11T09:30:00.000Z");
+    assert.equal(runtime.state.home.tasks[0]?.scheduleSegments[0]?.startAt, "2026-04-11T09:30:00.000Z");
+    assert.equal(runtime.state.home.timelineView.days[3]?.blocks[0]?.id, "timeline-block_api_1");
+    assert.equal(runtime.state.home.timelineView.days[3]?.blocks[0]?.startLabel, "09:30");
+    assert.equal(runtime.state.home.timelineView.days[3]?.blocks[0]?.endLabel, "11:30");
+    assert.equal(runtime.state.home.tasks[0]?.summary, "拖拽后回刷的任务说明。");
+  });
 });

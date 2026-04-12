@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>糖蟹 UI/UX 高保真原型 V1</title>
+    <style>
+      :root {
+        --bg: #f7efe6;
+        --surface: rgba(255, 251, 246, 0.88);
+        --surface-strong: #fffaf5;
+        --stroke: rgba(150, 102, 62, 0.12);
+        --text: #30241c;
+        --muted: #6e5a4c;
+        --soft: #9b7f6c;
+        --accent: #f59e0b;
+        --accent-2: #f68b6b;
+        --accent-3: #fb7185;
+        --ink: #3a2b22;
+        --shadow: 0 22px 54px rgba(137, 76, 37, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "SF Pro Display", "PingFang SC", "Noto Sans SC", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(250, 204, 21, 0.14), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(251, 146, 60, 0.16), transparent 26%),
+          var(--bg);
+      }
+
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 290px minmax(0, 1fr);
+      }
+
+      .sidebar {
+        border-right: 1px solid rgba(150, 102, 62, 0.1);
+        background: rgba(255, 248, 241, 0.72);
+        backdrop-filter: blur(18px);
+        padding: 28px 22px;
+        display: grid;
+        align-content: start;
+        gap: 18px;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+      }
+
+      .brand {
+        padding: 18px;
+        border-radius: 24px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(255,248,241,0.74));
+        border: 1px solid var(--stroke);
+      }
+
+      .brand-kicker {
+        display: inline-flex;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(245, 158, 11, 0.12);
+        color: #b45309;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .brand h1 {
+        margin: 12px 0 8px;
+        font-size: 1.55rem;
+      }
+
+      .brand p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
+        font-size: 0.95rem;
+      }
+
+      .group-title {
+        margin: 6px 0 0;
+        color: var(--soft);
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .nav {
+        display: grid;
+        gap: 10px;
+      }
+
+      .nav-btn {
+        border: 0;
+        background: rgba(255, 255, 255, 0.58);
+        border: 1px solid transparent;
+        border-radius: 18px;
+        padding: 14px 14px;
+        text-align: left;
+        color: var(--ink);
+        cursor: pointer;
+        transition: 160ms ease;
+      }
+
+      .nav-btn small {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+      }
+
+      .nav-btn.active {
+        background: linear-gradient(135deg, rgba(245,158,11,0.92), rgba(246,139,107,0.92));
+        color: #fff8f1;
+        box-shadow: 0 12px 28px rgba(246, 139, 107, 0.22);
+      }
+
+      .nav-btn.active small {
+        color: rgba(255, 248, 241, 0.84);
+      }
+
+      .main {
+        padding: 28px;
+        display: grid;
+        gap: 20px;
+      }
+
+      .hero {
+        border-radius: 30px;
+        padding: 26px;
+        background:
+          radial-gradient(circle at top right, rgba(248, 187, 120, 0.26), transparent 32%),
+          linear-gradient(180deg, rgba(255,255,255,0.88), rgba(255,247,239,0.9));
+        border: 1px solid var(--stroke);
+        box-shadow: var(--shadow);
+      }
+
+      .hero h2 {
+        margin: 0;
+        font-size: 2rem;
+      }
+
+      .hero p {
+        max-width: 78ch;
+        margin: 12px 0 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .hero-meta {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .chip {
+        display: inline-flex;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: rgba(245, 158, 11, 0.12);
+        color: #9a5b16;
+        font-size: 12px;
+      }
+
+      .screen {
+        display: none;
+        gap: 18px;
+      }
+
+      .screen.active {
+        display: grid;
+      }
+
+      .screen-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) 360px;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .notes {
+        border-radius: 26px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,248,241,0.86));
+        border: 1px solid var(--stroke);
+        box-shadow: var(--shadow);
+        padding: 20px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .notes h3 {
+        margin: 0;
+        font-size: 1.04rem;
+      }
+
+      .notes ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.75;
+      }
+
+      .mock-phone,
+      .mock-desktop {
+        border-radius: 30px;
+        border: 1px solid var(--stroke);
+        background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(255,248,241,0.88));
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .mock-phone {
+        max-width: 430px;
+        background: #fffaf5;
+        padding: 16px;
+      }
+
+      .phone-shell {
+        display: grid;
+        gap: 12px;
+      }
+
+      .phone-topbar {
+        height: 54px;
+        border-radius: 22px;
+        background: linear-gradient(135deg, #f7b267, #f68b6b);
+      }
+
+      .section-card {
+        border-radius: 24px;
+        background: rgba(255,255,255,0.88);
+        border: 1px solid rgba(150, 102, 62, 0.1);
+        padding: 14px;
+      }
+
+      .line {
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(183, 127, 79, 0.14);
+      }
+
+      .line.accent {
+        background: linear-gradient(90deg, var(--accent), var(--accent-3));
+      }
+
+      .softline {
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(183, 127, 79, 0.1);
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .tab {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(245, 158, 11, 0.08);
+        color: #8b5e34;
+        font-size: 13px;
+      }
+
+      .tab.active {
+        background: linear-gradient(135deg, #f59e0b, #f97316);
+        color: #fff8f1;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 10px;
+      }
+
+      .kpi-card {
+        border-radius: 20px;
+        background: rgba(255, 249, 243, 0.96);
+        border: 1px solid rgba(150, 102, 62, 0.08);
+        padding: 12px;
+      }
+
+      .timeline-board {
+        border-radius: 22px;
+        background:
+          linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,249,243,0.92));
+        border: 1px solid rgba(150, 102, 62, 0.08);
+        padding: 12px;
+      }
+
+      .date-rail {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .date-pill {
+        border-radius: 14px;
+        height: 42px;
+        background: rgba(245, 158, 11, 0.08);
+      }
+
+      .date-pill.active {
+        background: linear-gradient(135deg, rgba(247,178,103,0.4), rgba(246,139,107,0.34));
+      }
+
+      .timeline-layout {
+        display: grid;
+        grid-template-columns: 48px 1fr;
+        gap: 10px;
+        min-height: 210px;
+      }
+
+      .gutter {
+        display: grid;
+        gap: 10px;
+      }
+
+      .tick {
+        height: 18px;
+        border-radius: 999px;
+        background: rgba(150, 102, 62, 0.08);
+      }
+
+      .canvas {
+        position: relative;
+        border-radius: 18px;
+        min-height: 210px;
+        background:
+          repeating-linear-gradient(
+            180deg,
+            rgba(150, 102, 62, 0.06),
+            rgba(150, 102, 62, 0.06) 1px,
+            transparent 1px,
+            transparent 36px
+          );
+      }
+
+      .block {
+        position: absolute;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(247,178,103,0.92), rgba(246,139,107,0.9));
+        box-shadow: 0 10px 26px rgba(246, 139, 107, 0.18);
+      }
+
+      .block.a { top: 18px; left: 10px; right: 18px; height: 42px; }
+      .block.b { top: 82px; left: 24px; right: 74px; height: 58px; }
+      .block.c { top: 156px; left: 42px; right: 20px; height: 34px; }
+
+      .kanban {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .kan-column,
+      .plan-column {
+        border-radius: 20px;
+        background: rgba(255, 251, 246, 0.96);
+        border: 1px solid rgba(150, 102, 62, 0.08);
+        padding: 12px;
+        display: grid;
+        gap: 8px;
+        min-height: 196px;
+      }
+
+      .task-card {
+        min-height: 64px;
+        border-radius: 16px;
+        background: rgba(247, 178, 103, 0.16);
+        border: 1px solid rgba(245, 158, 11, 0.14);
+      }
+
+      .planning-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .bar {
+        height: 28px;
+        border-radius: 12px;
+        background: linear-gradient(90deg, rgba(247,178,103,0.62), rgba(246,139,107,0.62));
+      }
+
+      .meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .mini-chip {
+        display: inline-flex;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(245, 158, 11, 0.12);
+        color: #8a541a;
+        font-size: 12px;
+      }
+
+      .hint-card,
+      .history-card {
+        border-radius: 18px;
+        background: rgba(255, 249, 243, 0.9);
+        border: 1px solid rgba(150, 102, 62, 0.08);
+        padding: 12px;
+      }
+
+      .mock-desktop {
+        padding: 0;
+      }
+
+      .window-top {
+        height: 34px;
+        border-bottom: 1px solid rgba(150, 102, 62, 0.08);
+        background: rgba(255,255,255,0.72);
+      }
+
+      .desktop-shell {
+        padding: 14px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .desktop-nav {
+        height: 58px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #3a2b22, #6a4a37);
+      }
+
+      .desktop-grid {
+        display: grid;
+        grid-template-columns: 1.45fr 0.95fr;
+        gap: 12px;
+      }
+
+      .desktop-main,
+      .desktop-side {
+        display: grid;
+        gap: 12px;
+      }
+
+      .desktop-panel {
+        border-radius: 20px;
+        background: rgba(255,255,255,0.86);
+        border: 1px solid rgba(150, 102, 62, 0.1);
+        padding: 12px;
+      }
+
+      .desktop-panel.tall {
+        min-height: 260px;
+      }
+
+      .table {
+        display: grid;
+        gap: 10px;
+      }
+
+      .thead,
+      .trow {
+        display: grid;
+        gap: 8px;
+      }
+
+      .thead.providers,
+      .trow.providers {
+        grid-template-columns: 1.1fr 0.75fr 1.2fr 0.9fr;
+      }
+
+      .thead.models,
+      .trow.models {
+        grid-template-columns: 0.8fr 0.9fr 1.1fr 0.7fr 0.8fr;
+      }
+
+      .thead.prompts,
+      .trow.prompts {
+        grid-template-columns: 0.8fr 1fr 0.8fr 0.9fr;
+      }
+
+      .thead.logs,
+      .trow.logs {
+        grid-template-columns: 0.9fr 0.8fr 0.9fr 0.7fr 0.7fr;
+      }
+
+      .cell {
+        height: 12px;
+        border-radius: 999px;
+        background: rgba(150, 102, 62, 0.1);
+      }
+
+      .cell.accent {
+        background: linear-gradient(90deg, rgba(245,158,11,0.55), rgba(246,139,107,0.45));
+      }
+
+      .editor {
+        display: grid;
+        gap: 10px;
+      }
+
+      .editor-box {
+        min-height: 102px;
+        border-radius: 18px;
+        background: rgba(255, 251, 246, 0.96);
+        border: 1px solid rgba(150, 102, 62, 0.08);
+        padding: 12px;
+      }
+
+      .stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .footer-note {
+        color: var(--soft);
+        font-size: 0.92rem;
+        line-height: 1.65;
+      }
+
+      @media (max-width: 1200px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          position: static;
+          height: auto;
+        }
+
+        .screen-layout,
+        .desktop-grid,
+        .summary-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-kicker">Hi-Fi Prototype V1</div>
+          <h1>糖蟹整体改版原型</h1>
+          <p>统一品牌方向为「温和治愈 + 效率优先」。这里包含用户侧全部主页面和后台全部主页面的高保真交互原型。</p>
+        </div>
+
+        <div>
+          <div class="group-title">用户侧</div>
+          <div class="nav">
+            <button class="nav-btn active" data-target="mini-schedule" onclick="showScreen('mini-schedule', this)">日程首页<small>首页固定为日程，保留现有能力</small></button>
+            <button class="nav-btn" data-target="mini-items" onclick="showScreen('mini-items', this)">事项页<small>看板能力重做视觉和层级</small></button>
+            <button class="nav-btn" data-target="mini-planning" onclick="showScreen('mini-planning', this)">排期页<small>甘特/规划视图更清楚</small></button>
+            <button class="nav-btn" data-target="mini-detail" onclick="showScreen('mini-detail', this)">任务详情<small>只重做信息展示，不新增操作</small></button>
+          </div>
+        </div>
+
+        <div>
+          <div class="group-title">后台</div>
+          <div class="nav">
+            <button class="nav-btn" data-target="admin-providers" onclick="showScreen('admin-providers', this)">服务商配置<small>连接状态和测试结果更前置</small></button>
+            <button class="nav-btn" data-target="admin-models" onclick="showScreen('admin-models', this)">模型配置<small>场景绑定结构更清楚</small></button>
+            <button class="nav-btn" data-target="admin-prompts" onclick="showScreen('admin-prompts', this)">提示词管理<small>版本和编辑区更清晰</small></button>
+            <button class="nav-btn" data-target="admin-logs" onclick="showScreen('admin-logs', this)">调用日志<small>排障路径更易读</small></button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section class="hero">
+          <h2>高保真交互原型总览</h2>
+          <p>这一版严格遵守你已经确认的边界：用户首页仍然是日程，`日程 / 事项 / 排期` 功能不变，只做页面重构、样式重设计、信息层级优化和状态反馈升级。任务详情不引入新操作。后台保留四个页面能力，但全部统一到同一套品牌语言中。</p>
+          <div class="hero-meta">
+            <span class="chip">首页仍是日程</span>
+            <span class="chip">现有三 tab 功能不改</span>
+            <span class="chip">任务详情不新增能力</span>
+            <span class="chip">后台四页全部保留</span>
+          </div>
+        </section>
+
+        <section id="mini-schedule" class="screen active">
+          <div class="screen-layout">
+            <div class="mock-phone">
+              <div class="phone-shell">
+                <div class="phone-topbar"></div>
+                <div class="section-card">
+                  <div class="line accent" style="width: 62%;"></div>
+                  <div class="line" style="width: 42%; margin-top: 10px;"></div>
+                  <div class="summary-grid" style="margin-top: 12px;">
+                    <div class="kpi-card">
+                      <div class="softline" style="width: 54%;"></div>
+                      <div class="line accent" style="width: 72%; margin-top: 10px;"></div>
+                    </div>
+                    <div class="kpi-card">
+                      <div class="softline" style="width: 44%;"></div>
+                      <div class="line" style="width: 64%; margin-top: 10px;"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="tabs">
+                  <div class="tab active">日程</div>
+                  <div class="tab">事项</div>
+                  <div class="tab">排期</div>
+                </div>
+                <div class="timeline-board">
+                  <div class="date-rail">
+                    <div class="date-pill"></div>
+                    <div class="date-pill"></div>
+                    <div class="date-pill active"></div>
+                    <div class="date-pill"></div>
+                    <div class="date-pill"></div>
+                  </div>
+                  <div class="timeline-layout">
+                    <div class="gutter">
+                      <div class="tick"></div>
+                      <div class="tick"></div>
+                      <div class="tick"></div>
+                      <div class="tick"></div>
+                    </div>
+                    <div class="canvas">
+                      <div class="block a"></div>
+                      <div class="block b"></div>
+                      <div class="block c"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="hint-card">
+                  <div class="line accent" style="width: 38%;"></div>
+                  <div class="line" style="width: 78%; margin-top: 10px;"></div>
+                </div>
+              </div>
+            </div>
+            <aside class="notes">
+              <h3>日程首页</h3>
+              <ul>
+                <li>首页第一屏先给“今日节奏摘要”，降低用户进入时间轴时的认知负担。</li>
+                <li>时间轴能力完全保留，只把视觉噪声压下去，让任务块更容易扫读。</li>
+                <li>当前日、当前重点任务和提示卡的关系更明确，首页更像“今天已经被安顿好”。</li>
+              </ul>
+              <div class="footer-note">重点审核：这是否 still feels like 你的日程首页，而不是被改成别的产品。</div>
+            </aside>
+          </div>
+        </section>
+
+        <section id="mini-items" class="screen">
+          <div class="screen-layout">
+            <div class="mock-phone">
+              <div class="phone-shell">
+                <div class="phone-topbar"></div>
+                <div class="section-card">
+                  <div class="line accent" style="width: 56%;"></div>
+                  <div class="line" style="width: 34%; margin-top: 10px;"></div>
+                </div>
+                <div class="tabs">
+                  <div class="tab">日程</div>
+                  <div class="tab active">事项</div>
+                  <div class="tab">排期</div>
+                </div>
+                <div class="kanban">
+                  <div class="kan-column">
+                    <div class="softline" style="width: 58%;"></div>
+                    <div class="task-card"></div>
+                    <div class="task-card"></div>
+                  </div>
+                  <div class="kan-column">
+                    <div class="softline" style="width: 48%;"></div>
+                    <div class="task-card"></div>
+                  </div>
+                  <div class="kan-column">
+                    <div class="softline" style="width: 62%;"></div>
+                    <div class="task-card"></div>
+                    <div class="task-card"></div>
+                  </div>
+                </div>
+                <div class="hint-card">
+                  <div class="line" style="width: 66%;"></div>
+                </div>
+              </div>
+            </div>
+            <aside class="notes">
+              <h3>事项页</h3>
+              <ul>
+                <li>保留看板逻辑，但每一列都更强调“优先级和推进感”，减少只是堆卡片的感觉。</li>
+                <li>列头更轻，卡片更温和，但高优先级卡会有更强的视觉识别。</li>
+                <li>整体目的是让看板从“列表变形”升级成“事项状态工作台”。</li>
+              </ul>
+              <div class="footer-note">重点审核：当前看板能力有没有被保留，同时视觉是不是更容易扫读。</div>
+            </aside>
+          </div>
+        </section>
+
+        <section id="mini-planning" class="screen">
+          <div class="screen-layout">
+            <div class="mock-phone">
+              <div class="phone-shell">
+                <div class="phone-topbar"></div>
+                <div class="section-card">
+                  <div class="line accent" style="width: 54%;"></div>
+                  <div class="line" style="width: 42%; margin-top: 10px;"></div>
+                  <div class="meta-row" style="margin-top: 12px;">
+                    <span class="mini-chip">日</span>
+                    <span class="mini-chip">周</span>
+                    <span class="mini-chip">月</span>
+                    <span class="mini-chip">年</span>
+                  </div>
+                </div>
+                <div class="tabs">
+                  <div class="tab">日程</div>
+                  <div class="tab">事项</div>
+                  <div class="tab active">排期</div>
+                </div>
+                <div class="planning-grid">
+                  <div class="plan-column">
+                    <div class="softline" style="width: 58%;"></div>
+                    <div class="bar"></div>
+                    <div class="bar" style="width: 70%;"></div>
+                  </div>
+                  <div class="plan-column">
+                    <div class="softline" style="width: 46%;"></div>
+                    <div class="bar" style="width: 84%;"></div>
+                    <div class="bar" style="width: 58%;"></div>
+                  </div>
+                  <div class="plan-column">
+                    <div class="softline" style="width: 62%;"></div>
+                    <div class="bar" style="width: 62%;"></div>
+                  </div>
+                </div>
+                <div class="hint-card">
+                  <div class="line accent" style="width: 48%;"></div>
+                  <div class="line" style="width: 74%; margin-top: 10px;"></div>
+                </div>
+              </div>
+            </div>
+            <aside class="notes">
+              <h3>排期页</h3>
+              <ul>
+                <li>保留当前规划/甘特能力，但把时间跨度和任务关系做得更清楚。</li>
+                <li>周期切换被做成更轻的模式条，不再像技术开关。</li>
+                <li>规划页应该让用户感觉“我能看懂接下来怎么推进”，而不是面对工程视图。</li>
+              </ul>
+              <div class="footer-note">重点审核：这是否保留了排期能力，同时明显提升了理解成本。</div>
+            </aside>
+          </div>
+        </section>
+
+        <section id="mini-detail" class="screen">
+          <div class="screen-layout">
+            <div class="mock-phone">
+              <div class="phone-shell">
+                <div class="phone-topbar"></div>
+                <div class="section-card">
+                  <div class="line accent" style="width: 68%;"></div>
+                  <div class="line" style="width: 38%; margin-top: 10px;"></div>
+                  <div class="meta-row" style="margin-top: 12px;">
+                    <span class="mini-chip">P1</span>
+                    <span class="mini-chip">今天 18:00</span>
+                    <span class="mini-chip">论文写作</span>
+                  </div>
+                </div>
+                <div class="section-card">
+                  <div class="line accent" style="width: 42%;"></div>
+                  <div class="line" style="width: 82%; margin-top: 10px;"></div>
+                  <div class="line" style="width: 70%; margin-top: 10px;"></div>
+                </div>
+                <div class="section-card">
+                  <div class="line accent" style="width: 52%;"></div>
+                  <div class="line" style="width: 68%; margin-top: 10px;"></div>
+                  <div class="line" style="width: 74%; margin-top: 10px;"></div>
+                </div>
+                <div class="history-card">
+                  <div class="line accent" style="width: 36%;"></div>
+                  <div class="line" style="width: 62%; margin-top: 10px;"></div>
+                </div>
+              </div>
+            </div>
+            <aside class="notes">
+              <h3>任务详情</h3>
+              <ul>
+                <li>这一页严格只做信息展示重设计，不引入新的操作能力。</li>
+                <li>第一屏先讲清任务状态、时间、优先级和来源；然后才是说明、执行计划、AI 建议和历史记录。</li>
+                <li>目标是从当前极简页升级成“完整而清楚的信息页”。</li>
+              </ul>
+              <div class="footer-note">重点审核：这页有没有越界成“操作页”。如果没有，它就符合约束。</div>
+            </aside>
+          </div>
+        </section>
+
+        <section id="admin-providers" class="screen">
+          <div class="screen-layout">
+            <div class="mock-desktop">
+              <div class="window-top"></div>
+              <div class="desktop-shell">
+                <div class="desktop-nav"></div>
+                <div class="desktop-grid">
+                  <div class="desktop-main">
+                    <div class="desktop-panel tall">
+                      <div class="line accent" style="width: 28%;"></div>
+                      <div class="table" style="margin-top: 16px;">
+                        <div class="thead providers">
+                          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        </div>
+                        <div class="trow providers">
+                          <div class="cell accent"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        </div>
+                        <div class="trow providers">
+                          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="desktop-side">
+                    <div class="desktop-panel">
+                      <div class="line accent" style="width: 52%;"></div>
+                      <div class="line" style="width: 68%; margin-top: 10px;"></div>
+                      <div class="line" style="width: 74%; margin-top: 10px;"></div>
+                    </div>
+                    <div class="desktop-panel">
+                      <div class="line accent" style="width: 48%;"></div>
+                      <div class="line" style="width: 56%; margin-top: 10px;"></div>
+                    </div>
+                    <div class="desktop-panel">
+                      <div class="line accent" style="width: 44%;"></div>
+                      <div class="line" style="width: 72%; margin-top: 10px;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <aside class="notes">
+              <h3>服务商配置</h3>
+              <ul>
+                <li>保留现有新增/测试能力，但把“连接状态、默认模型、最近测试结果”做得更前置。</li>
+                <li>主区展示 provider 列表，右侧是操作与测试面板，工作路径更清楚。</li>
+                <li>整个后台看上去会更像被整理过的工作台，而不是技术表单集合。</li>
+              </ul>
+            </aside>
+          </div>
+        </section>
+
+        <section id="admin-models" class="screen">
+          <div class="screen-layout">
+            <div class="mock-desktop">
+              <div class="window-top"></div>
+              <div class="desktop-shell">
+                <div class="desktop-nav"></div>
+                <div class="desktop-grid">
+                  <div class="desktop-main">
+                    <div class="desktop-panel tall">
+                      <div class="line accent" style="width: 24%;"></div>
+                      <div class="table" style="margin-top: 16px;">
+                        <div class="thead models">
+                          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        </div>
+                        <div class="trow models">
+                          <div class="cell accent"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        </div>
+                        <div class="trow models">
+                          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="desktop-side">
+                    <div class="desktop-panel">
+                      <div class="line accent" style="width: 58%;"></div>
+                      <div class="line" style="width: 64%; margin-top: 10px;"></div>
+                      <div class="line" style="width: 52%; margin-top: 10px;"></div>
+                    </div>
+                    <div class="desktop-panel">
+                      <div class="line accent" style="width: 36%;"></div>
+                      <div class="line" style="width: 74%; margin-top: 10px;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <aside class="notes">
+              <h3>模型配置</h3>
+              <ul>
+                <li>模型页的主任务是看清“场景 -> 模型绑定”关系，所以表格层级更强调 scene。</li>
+                <li>右侧面板用来做新增/默认绑定和说明，减少切换成本。</li>
+                <li>整体阅读感从“参数页”转为“策略配置页”。</li>
+              </ul>
+            </aside>
+          </div>
+        </section>
+
+        <section id="admin-prompts" class="screen">
+          <div class="screen-layout">
+            <div class="mock-desktop">
+              <div class="window-top"></div>
+              <div class="desktop-shell">
+                <div class="desktop-nav"></div>
+                <div class="desktop-grid">
+                  <div class="desktop-main">
+                    <div class="desktop-panel tall editor">
+                      <div class="line accent" style="width: 26%;"></div>
+                      <div class="editor-box">
+                        <div class="line" style="width: 78%;"></div>
+                        <div class="line" style="width: 72%; margin-top: 10px;"></div>
+                        <div class="line" style="width: 84%; margin-top: 10px;"></div>
+                      </div>
+                      <div class="editor-box">
+                        <div class="line" style="width: 70%;"></div>
+                        <div class="line" style="width: 82%; margin-top: 10px;"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="desktop-side stack">
+                    <div class="desktop-panel">
+                      <div class="line accent" style="width: 48%;"></div>
+                      <div class="table" style="margin-top: 14px;">
+                        <div class="trow prompts">
+                          <div class="cell accent"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        </div>
+                        <div class="trow prompts">
+                          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="desktop-panel">
+                      <div class="line accent" style="width: 38%;"></div>
+                      <div class="line" style="width: 68%; margin-top: 10px;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <aside class="notes">
+              <h3>提示词管理</h3>
+              <ul>
+                <li>这一页的主问题是“现在生效的是哪版、我正在编辑哪版”，所以编辑器和版本区需要被拉开层级。</li>
+                <li>左侧是主要编辑工作区，右侧是版本列表和当前状态。</li>
+                <li>保留当前能力，但阅读和版本感知会更强。</li>
+              </ul>
+            </aside>
+          </div>
+        </section>
+
+        <section id="admin-logs" class="screen">
+          <div class="screen-layout">
+            <div class="mock-desktop">
+              <div class="window-top"></div>
+              <div class="desktop-shell">
+                <div class="desktop-nav"></div>
+                <div class="desktop-grid">
+                  <div class="desktop-main">
+                    <div class="desktop-panel tall">
+                      <div class="line accent" style="width: 24%;"></div>
+                      <div class="table" style="margin-top: 16px;">
+                        <div class="thead logs">
+                          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        </div>
+                        <div class="trow logs">
+                          <div class="cell accent"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        </div>
+                        <div class="trow logs">
+                          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="desktop-side stack">
+                    <div class="desktop-panel">
+                      <div class="line accent" style="width: 54%;"></div>
+                      <div class="line" style="width: 74%; margin-top: 10px;"></div>
+                      <div class="line" style="width: 64%; margin-top: 10px;"></div>
+                    </div>
+                    <div class="desktop-panel">
+                      <div class="line accent" style="width: 42%;"></div>
+                      <div class="line" style="width: 70%; margin-top: 10px;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <aside class="notes">
+              <h3>调用日志</h3>
+              <ul>
+                <li>日志页从“只读审计表”升级成“排障入口页”，但不改变日志能力本身。</li>
+                <li>左侧仍是日志主表，右侧是最近异常摘要和建议排查路径。</li>
+                <li>目标是让后台使用者更快定位问题，而不是只看到状态码。</li>
+              </ul>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      function showScreen(id, button) {
+        document.querySelectorAll('.screen').forEach((screen) => {
+          screen.classList.toggle('active', screen.id === id);
+        });
+        document.querySelectorAll('.nav-btn').forEach((btn) => {
+          btn.classList.toggle('active', btn === button);
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    </script>
+  </body>
+</html>

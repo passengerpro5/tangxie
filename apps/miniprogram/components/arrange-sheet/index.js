@@ -46,15 +46,7 @@ export function createArrangeSheet(input = {}) {
       { id: "arrange", label: "安排任务" },
       { id: "history", label: "历史记录" },
     ],
-    threadItems: input.threadItems ?? [
-      {
-        id: "thread-hero",
-        kind: "hero",
-        title: "开始规划",
-        body: "把任务丢给糖蟹，它会自动追问 deadline、时长和开始时间。",
-        accent: "soft",
-      },
-    ],
+    threadItems: input.threadItems ?? [],
     attachmentActions: [
       { id: "doc", label: "上传文档", kind: "doc" },
       { id: "image", label: "上传图片", kind: "image" },

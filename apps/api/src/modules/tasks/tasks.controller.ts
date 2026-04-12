@@ -4,11 +4,22 @@ import {
   TasksService,
   type ClarificationSessionRecord,
   type TaskInput,
-  type TaskInputSourceRecord,
   type TaskRecord,
+  type TaskInputSourceRecord,
 } from "./tasks.service.ts";
+import type { ConfirmedBlockRecord } from "../../persistence/scheduling-repository.ts";
 
 export type TasksHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void> | void;
+
+export interface TasksControllerOptions {
+  listConfirmedBlocks?: () => Promise<ConfirmedBlockRecord[]>;
+  updateConfirmedBlock?: (input: {
+    taskId: string;
+    blockId: string;
+    startAt: Date;
+    endAt: Date;
+  }) => Promise<ConfirmedBlockRecord>;
+}
 
 type AttachmentKind = "image" | "doc" | "text";
 
@@ -114,17 +125,125 @@ function serializeSession(session: ClarificationSessionRecord) {
   };
 }
 
+function serializeBlock(block: ConfirmedBlockRecord) {
+  return {
+    ...block,
+    startAt: block.startAt.toISOString(),
+    endAt: block.endAt.toISOString(),
+  };
+}
+
 export class TasksController {
   private readonly service: TasksService;
+  private readonly listConfirmedBlocks?: () => Promise<ConfirmedBlockRecord[]>;
+  private readonly updateConfirmedBlock?: TasksControllerOptions["updateConfirmedBlock"];
 
-  constructor(service: TasksService) {
+  constructor(service: TasksService, options: TasksControllerOptions = {}) {
     this.service = service;
+    this.listConfirmedBlocks = options.listConfirmedBlocks;
+    this.updateConfirmedBlock = options.updateConfirmedBlock;
   }
 
   async handle(req: IncomingMessage, res: ServerResponse) {
     const url = new URL(req.url ?? "/", "http://localhost");
 
     try {
+      if (req.method === "GET" && url.pathname === "/tasks") {
+        const [tasks, confirmedBlocks] = await Promise.all([
+          this.service.listTasks(),
+          this.listConfirmedBlocks?.() ?? Promise.resolve([]),
+        ]);
+
+        sendJson(res, 200, {
+          items: tasks.map((task) => ({
+            ...serializeTask(task),
+            scheduleBlocks: confirmedBlocks
+              .filter((block) => block.taskId === task.id)
+              .map(serializeBlock),
+          })),
+        });
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname.startsWith("/tasks/")) {
+        const taskId = url.pathname.slice("/tasks/".length);
+        if (!taskId || taskId === "intake") {
+          sendJson(res, 404, { message: "Not Found" });
+          return;
+        }
+
+        const [task, confirmedBlocks] = await Promise.all([
+          this.service.getTask(taskId),
+          this.listConfirmedBlocks?.() ?? Promise.resolve([]),
+        ]);
+
+        if (!task) {
+          sendJson(res, 404, { message: "Task not found" });
+          return;
+        }
+
+        sendJson(res, 200, {
+          task: serializeTask(task),
+          scheduleBlocks: confirmedBlocks
+            .filter((block) => block.taskId === task.id)
+            .map(serializeBlock),
+        });
+        return;
+      }
+
+      if (
+        req.method === "PATCH" &&
+        url.pathname.startsWith("/tasks/") &&
+        url.pathname.includes("/schedule-blocks/")
+      ) {
+        const match = url.pathname.match(/^\/tasks\/([^/]+)\/schedule-blocks\/([^/]+)$/);
+        if (!match) {
+          sendJson(res, 404, { message: "Not Found" });
+          return;
+        }
+
+        const [, taskId, blockId] = match;
+        const body = (await readJsonBody(req)) as { startAt?: string; endAt?: string } | undefined;
+        if (typeof body?.startAt !== "string" || typeof body?.endAt !== "string") {
+          sendJson(res, 400, { message: "startAt and endAt are required" });
+          return;
+        }
+
+        const startAt = new Date(body.startAt);
+        const endAt = new Date(body.endAt);
+        if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) {
+          sendJson(res, 400, { message: "Invalid startAt or endAt" });
+          return;
+        }
+
+        const task = await this.service.getTask(taskId);
+        if (!task) {
+          sendJson(res, 404, { message: "Task not found" });
+          return;
+        }
+
+        if (!this.updateConfirmedBlock || !this.listConfirmedBlocks) {
+          sendJson(res, 501, { message: "Schedule block update is not available" });
+          return;
+        }
+
+        await this.updateConfirmedBlock({
+          taskId,
+          blockId,
+          startAt,
+          endAt,
+        });
+
+        const confirmedBlocks = await this.listConfirmedBlocks();
+        sendJson(res, 200, {
+          task: serializeTask(task),
+          scheduleBlocks: confirmedBlocks
+            .filter((block) => block.taskId === task.id)
+            .map(serializeBlock),
+        });
+        return;
+      }
+
       if (req.method === "POST" && url.pathname === "/tasks/intake") {
         const body = ((await readJsonBody(req)) ?? {}) as TaskIntakeBody;
         const result = await this.service.intakeTask(buildIntakeInput(body));
@@ -147,7 +266,10 @@ export class TasksController {
   }
 }
 
-export function createTasksHandler(service = new TasksService()): TasksHandler {
-  const controller = new TasksController(service);
+export function createTasksHandler(
+  service = new TasksService(),
+  options: TasksControllerOptions = {},
+): TasksHandler {
+  const controller = new TasksController(service, options);
   return (req, res) => controller.handle(req, res);
 }

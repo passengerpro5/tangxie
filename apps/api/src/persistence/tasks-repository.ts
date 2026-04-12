@@ -83,6 +83,7 @@ export interface CreateClarificationSessionRecordInput {
 }
 
 export interface TasksRepository {
+  createTask(input: CreateTaskRecordInput): Promise<TaskRecord>;
   createTaskWithSourceAndSession(input: {
     task: CreateTaskRecordInput;
     source: CreateTaskInputSourceRecordInput;
@@ -164,6 +165,18 @@ export function createInMemoryTasksRepository(
   const sessions: ClarificationSessionRecord[] = [];
 
   return {
+    async createTask(input) {
+      const timestamp = now();
+      const task: TaskRecord = {
+        id: createId("task", ++taskSeq),
+        createdAt: cloneDate(timestamp),
+        updatedAt: cloneDate(timestamp),
+        ...input,
+      };
+
+      tasks.push(task);
+      return cloneTask(task);
+    },
     async createTaskWithSourceAndSession(input) {
       const timestamp = now();
       const task: TaskRecord = {

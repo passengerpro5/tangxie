@@ -18,9 +18,17 @@ export interface CreateConfirmedBlockInput {
   durationMinutes: number;
 }
 
+export interface UpdateConfirmedBlockInput {
+  taskId: string;
+  blockId: string;
+  startAt: Date;
+  endAt: Date;
+}
+
 export interface SchedulingRepository {
   listConfirmedBlocks(): Promise<ConfirmedBlockRecord[]>;
   createConfirmedBlocks(blocks: CreateConfirmedBlockInput[]): Promise<ConfirmedBlockRecord[]>;
+  updateConfirmedBlock(input: UpdateConfirmedBlockInput): Promise<ConfirmedBlockRecord>;
 }
 
 function createId(prefix: string, seed: number) {
@@ -68,6 +76,27 @@ export function createInMemorySchedulingRepository(): SchedulingRepository {
 
       confirmedBlocks.push(...created);
       return created.map(cloneConfirmedBlock);
+    },
+    async updateConfirmedBlock(input) {
+      const index = confirmedBlocks.findIndex(
+        (block) => block.id === input.blockId && block.taskId === input.taskId,
+      );
+      if (index < 0) {
+        throw new Error(`Confirmed schedule block not found: ${input.blockId}`);
+      }
+
+      const updated: ConfirmedBlockRecord = {
+        ...confirmedBlocks[index],
+        startAt: cloneDate(input.startAt),
+        endAt: cloneDate(input.endAt),
+        durationMinutes: Math.max(
+          0,
+          Math.round((input.endAt.getTime() - input.startAt.getTime()) / 60000),
+        ),
+      };
+
+      confirmedBlocks[index] = updated;
+      return cloneConfirmedBlock(updated);
     },
   };
 }

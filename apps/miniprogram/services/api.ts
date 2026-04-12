@@ -153,6 +153,47 @@ export interface ArrangeConversationConfirmResponse {
   confirmedBlocks: Array<ArrangeConversationBlockSnapshot & { status: "confirmed" }>;
 }
 
+export interface TaskRecordResponse {
+  id: string;
+  title: string;
+  description: string;
+  sourceType: TaskSourceType;
+  status: string;
+  deadlineAt: string | null;
+  estimatedDurationMinutes: number | null;
+  priorityScore: number | null;
+  priorityRank: number | null;
+  importanceReason: string | null;
+  createdByAI: boolean;
+  userConfirmed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskScheduleBlockResponse {
+  id: string;
+  taskId: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  durationMinutes: number;
+  status: "confirmed";
+}
+
+export interface TasksListResponse {
+  items: Array<TaskRecordResponse & { scheduleBlocks: TaskScheduleBlockResponse[] }>;
+}
+
+export interface TaskDetailResponse {
+  task: TaskRecordResponse;
+  scheduleBlocks: TaskScheduleBlockResponse[];
+}
+
+export interface UpdateTaskScheduleBlockPayload {
+  startAt: string;
+  endAt: string;
+}
+
 function buildUrl(baseUrl: string, path: string) {
   return `${baseUrl.replace(/\/$/, "")}${path}`;
 }
@@ -326,6 +367,40 @@ export function createMiniProgramApiClient(options: MiniProgramApiClientOptions)
         `/arrange/conversations/${conversationId}/confirm`,
         {
           method: "POST",
+        },
+      );
+    },
+    listTasks() {
+      return requestJson<TasksListResponse>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        "/tasks",
+        {
+          method: "GET",
+        },
+      );
+    },
+    getTask(taskId: string) {
+      return requestJson<TaskDetailResponse>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        `/tasks/${taskId}`,
+        {
+          method: "GET",
+        },
+      );
+    },
+    updateTaskScheduleBlock(taskId: string, blockId: string, payload: UpdateTaskScheduleBlockPayload) {
+      return requestJson<TaskDetailResponse>(
+        fetchImpl,
+        transport,
+        options.baseUrl,
+        `/tasks/${taskId}/schedule-blocks/${blockId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
         },
       );
     },

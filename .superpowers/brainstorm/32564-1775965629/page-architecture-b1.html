@@ -1,0 +1,501 @@
+<style>
+  .page {
+    display: grid;
+    gap: 22px;
+  }
+
+  .hero,
+  .section {
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(255, 247, 239, 0.92));
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    box-shadow: 0 22px 54px rgba(137, 76, 37, 0.12);
+    padding: 22px;
+  }
+
+  .hero h2,
+  .section h3 {
+    margin: 0;
+    color: #2b2118;
+  }
+
+  .hero p,
+  .section p,
+  .note,
+  .caption {
+    color: #6b5b4d;
+    line-height: 1.7;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.14);
+    color: #b45309;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+  .phone {
+    border-radius: 34px;
+    padding: 14px;
+    background: #fffaf5;
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.8), 0 18px 44px rgba(143, 92, 53, 0.16);
+  }
+
+  .phone-shell {
+    display: grid;
+    gap: 12px;
+  }
+
+  .topbar {
+    height: 46px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #f7b267, #f68b6b);
+  }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+  }
+
+  .tab {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(217, 119, 6, 0.08);
+    color: #8b5e34;
+    font-size: 13px;
+  }
+
+  .tab.active {
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: #fff8f1;
+  }
+
+  .panel {
+    border-radius: 22px;
+    background: rgba(255,255,255,0.86);
+    border: 1px solid rgba(180, 108, 56, 0.1);
+    padding: 14px;
+  }
+
+  .timeline-board {
+    border-radius: 20px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,249,243,0.92));
+    border: 1px solid rgba(180, 108, 56, 0.08);
+    padding: 12px;
+  }
+
+  .rail {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .rail-day {
+    border-radius: 14px;
+    height: 42px;
+    background: rgba(217, 119, 6, 0.08);
+  }
+
+  .schedule-layout {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 10px;
+    min-height: 180px;
+  }
+
+  .gutter {
+    display: grid;
+    gap: 10px;
+  }
+
+  .tick {
+    height: 20px;
+    border-radius: 999px;
+    background: rgba(180, 108, 56, 0.08);
+  }
+
+  .canvas {
+    position: relative;
+    border-radius: 18px;
+    background:
+      repeating-linear-gradient(
+        180deg,
+        rgba(180, 108, 56, 0.06),
+        rgba(180, 108, 56, 0.06) 1px,
+        transparent 1px,
+        transparent 34px
+      );
+  }
+
+  .block {
+    position: absolute;
+    left: 10px;
+    right: 12px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(247,178,103,0.9), rgba(246,139,107,0.88));
+    box-shadow: 0 8px 24px rgba(246, 139, 107, 0.22);
+  }
+
+  .b1 { top: 18px; height: 42px; }
+  .b2 { top: 80px; height: 54px; right: 60px; }
+  .b3 { top: 150px; height: 34px; left: 42px; right: 18px; }
+
+  .kanban {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .kan-col {
+    border-radius: 18px;
+    background: rgba(255, 251, 246, 0.96);
+    border: 1px solid rgba(180, 108, 56, 0.08);
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+    min-height: 152px;
+  }
+
+  .cardx {
+    border-radius: 14px;
+    min-height: 38px;
+    background: rgba(247, 178, 103, 0.18);
+  }
+
+  .plan-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
+  .col {
+    border-radius: 18px;
+    background: rgba(255, 251, 246, 0.96);
+    border: 1px solid rgba(180, 108, 56, 0.08);
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+    min-height: 160px;
+  }
+
+  .bar {
+    border-radius: 12px;
+    background: linear-gradient(90deg, rgba(247,178,103,0.62), rgba(246,139,107,0.62));
+    height: 28px;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .chip {
+    display: inline-flex;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    color: #9a5b16;
+    font-size: 12px;
+  }
+
+  .desk {
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    background: linear-gradient(180deg, #fffaf4, #fff3ea);
+  }
+
+  .desk-top {
+    height: 34px;
+    background: rgba(255,255,255,0.72);
+    border-bottom: 1px solid rgba(180, 108, 56, 0.08);
+  }
+
+  .desk-shell {
+    padding: 14px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .desk-mainbar {
+    height: 58px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #3a2b22, #6a4a37);
+  }
+
+  .desk-layout {
+    display: grid;
+    grid-template-columns: 1.45fr 0.95fr;
+    gap: 12px;
+  }
+
+  .stack {
+    display: grid;
+    gap: 12px;
+  }
+
+  .desk-box {
+    border-radius: 18px;
+    background: rgba(255,255,255,0.86);
+    border: 1px solid rgba(180, 108, 56, 0.1);
+    padding: 12px;
+    min-height: 110px;
+  }
+
+  .desk-box.tall {
+    min-height: 230px;
+  }
+
+  .line {
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(183, 127, 79, 0.14);
+  }
+
+  .line.accent {
+    background: linear-gradient(90deg, #f59e0b, #fb7185);
+  }
+
+  .checklist {
+    display: grid;
+    gap: 10px;
+  }
+
+  .check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    color: #5f4f41;
+    line-height: 1.65;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f59e0b, #fb7185);
+    margin-top: 8px;
+    flex: none;
+  }
+
+  @media (max-width: 1100px) {
+    .grid,
+    .columns {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="page">
+  <div class="hero">
+    <div class="eyebrow">Section 3</div>
+    <h2>页面级 UI/UX 方案</h2>
+    <p>这部分只做你允许的重设计范围：用户侧不新增 tab，不改 `日程 / 看板 / 规划` 的功能；重点是重做页面层级、气氛和操作可读性。后台仍是内部工作台，但会统一到同一套品牌语言里。</p>
+    <div class="meta">
+      <span class="chip">首页仍是日程</span>
+      <span class="chip">日程内功能不改</span>
+      <span class="chip">允许重做样式和信息层级</span>
+      <span class="chip">后台不对用户开放</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>小程序首页：日程优先，但更像“今天已经被安顿好”</h3>
+    <div class="grid" style="margin-top:16px;">
+      <div class="phone">
+        <div class="phone-shell">
+          <div class="topbar"></div>
+          <div class="panel">
+            <div class="line accent" style="width: 64%;"></div>
+            <div class="line" style="width: 42%; margin-top: 10px;"></div>
+          </div>
+          <div class="tabs">
+            <div class="tab active">日程</div>
+            <div class="tab">看板</div>
+            <div class="tab">规划</div>
+          </div>
+          <div class="timeline-board">
+            <div class="rail">
+              <div class="rail-day"></div>
+              <div class="rail-day"></div>
+              <div class="rail-day" style="background:linear-gradient(135deg, rgba(247,178,103,0.48), rgba(246,139,107,0.42));"></div>
+              <div class="rail-day"></div>
+              <div class="rail-day"></div>
+            </div>
+            <div class="schedule-layout">
+              <div class="gutter">
+                <div class="tick"></div>
+                <div class="tick"></div>
+                <div class="tick"></div>
+                <div class="tick"></div>
+              </div>
+              <div class="canvas">
+                <div class="block b1"></div>
+                <div class="block b2"></div>
+                <div class="block b3"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="checklist">
+        <div class="check"><span class="dot"></span><span>顶部先给“今日节奏总结”，再进入原有日程视图，让用户一进来就知道今天紧不紧、接下来做什么。</span></div>
+        <div class="check"><span class="dot"></span><span>`日程 / 看板 / 规划` 保持原功能，但 tab 样式从“功能切换器”改成“工作模式切换器”，更有主次。</span></div>
+        <div class="check"><span class="dot"></span><span>时间轴区域保留原交互能力，只降低视觉噪声：时间刻度更轻，任务块更温暖，当前日和当前任务更突出。</span></div>
+        <div class="check"><span class="dot"></span><span>空状态不再只是“暂无排期”，而是给出温和但明确的下一步动作。</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>首页内三个工作模式的重心</h3>
+    <div class="columns" style="margin-top:16px;">
+      <div class="panel">
+        <h3 style="font-size:1rem;">看板</h3>
+        <div class="kanban" style="margin-top:12px;">
+          <div class="kan-col">
+            <div class="line accent" style="width: 54%;"></div>
+            <div class="cardx"></div>
+            <div class="cardx"></div>
+          </div>
+          <div class="kan-col">
+            <div class="line accent" style="width: 46%;"></div>
+            <div class="cardx"></div>
+          </div>
+          <div class="kan-col">
+            <div class="line accent" style="width: 58%;"></div>
+            <div class="cardx"></div>
+            <div class="cardx"></div>
+          </div>
+        </div>
+        <p class="caption">看板保留现有分组逻辑，但每列都强化“现在最该处理什么”的层级，降低卡片堆叠的疲劳感。</p>
+      </div>
+
+      <div class="panel">
+        <h3 style="font-size:1rem;">规划</h3>
+        <div class="plan-grid" style="margin-top:12px;">
+          <div class="col">
+            <div class="line accent" style="width: 62%;"></div>
+            <div class="bar"></div>
+            <div class="bar" style="width:70%;"></div>
+          </div>
+          <div class="col">
+            <div class="line accent" style="width: 52%;"></div>
+            <div class="bar" style="width:82%;"></div>
+            <div class="bar" style="width:56%;"></div>
+          </div>
+          <div class="col">
+            <div class="line accent" style="width: 58%;"></div>
+            <div class="bar" style="width:64%;"></div>
+          </div>
+        </div>
+        <p class="caption">规划继续保留甘特感知，但列头、阶段关系、时间跨度会更清楚，减少“像技术视图”的压迫感。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>任务详情页：从信息展示，升级成任务控制面板</h3>
+    <div class="grid" style="margin-top:16px;">
+      <div class="phone">
+        <div class="phone-shell">
+          <div class="topbar"></div>
+          <div class="panel">
+            <div class="line accent" style="width: 70%;"></div>
+            <div class="line" style="width: 36%; margin-top: 10px;"></div>
+            <div class="meta" style="margin-top: 12px;">
+              <span class="chip">高优先级</span>
+              <span class="chip">明晚截止</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="line accent" style="width: 58%;"></div>
+            <div class="line" style="width: 74%; margin-top: 10px;"></div>
+            <div class="line" style="width: 66%; margin-top: 10px;"></div>
+          </div>
+          <div class="panel">
+            <div class="line accent" style="width: 48%;"></div>
+            <div class="line" style="width: 52%; margin-top: 10px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="checklist">
+        <div class="check"><span class="dot"></span><span>详情页顶部先展示“任务状态卡”，把优先级、截止时间、预计时长、所属分类压成第一眼就能判断的摘要。</span></div>
+        <div class="check"><span class="dot"></span><span>中段拆成三个区块：任务说明、执行计划、AI 建议。你现在的数据模型已经有这些字段，只是页面还没真正组织出来。</span></div>
+        <div class="check"><span class="dot"></span><span>底部动作统一成固定操作带：完成、重新安排、编辑、查看记录。这样任务详情会从“读信息”变成“做决策”。</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>后台工作台：保留四页能力，但从“表单+表格”变成“总览式工作流”</h3>
+    <div class="grid" style="margin-top:16px;">
+      <div class="desk">
+        <div class="desk-top"></div>
+        <div class="desk-shell">
+          <div class="desk-mainbar"></div>
+          <div class="desk-layout">
+            <div class="stack">
+              <div class="desk-box tall">
+                <div class="line accent" style="width: 38%;"></div>
+                <div class="line" style="width: 70%; margin-top: 12px;"></div>
+                <div class="line" style="width: 62%; margin-top: 10px;"></div>
+                <div class="line" style="width: 84%; margin-top: 22px;"></div>
+                <div class="line" style="width: 76%; margin-top: 10px;"></div>
+              </div>
+              <div class="desk-box">
+                <div class="line accent" style="width: 46%;"></div>
+                <div class="line" style="width: 56%; margin-top: 10px;"></div>
+              </div>
+            </div>
+            <div class="stack">
+              <div class="desk-box">
+                <div class="line accent" style="width: 58%;"></div>
+                <div class="line" style="width: 50%; margin-top: 10px;"></div>
+              </div>
+              <div class="desk-box">
+                <div class="line accent" style="width: 54%;"></div>
+                <div class="line" style="width: 66%; margin-top: 10px;"></div>
+              </div>
+              <div class="desk-box">
+                <div class="line accent" style="width: 44%;"></div>
+                <div class="line" style="width: 62%; margin-top: 10px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="checklist">
+        <div class="check"><span class="dot"></span><span>四个页面能力保留，但每页改成“主数据面板 + 右侧操作/说明区”的更清晰工作流，不再只是左表右表单的机械组合。</span></div>
+        <div class="check"><span class="dot"></span><span>服务商页强调“连接状态和默认模型”；模型页强调“场景绑定”；提示词页强调“当前生效版本”；日志页强调“最近异常与链路定位”。</span></div>
+        <div class="check"><span class="dot"></span><span>后台视觉和小程序保持一套语言，但更克制、更稳，不会软到像 C 端页面。</span></div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -136,6 +136,17 @@ export class PrismaTasksRepository implements TasksRepository {
     this.prisma = prisma;
   }
 
+  async createTask(input: CreateTaskRecordInput) {
+    const record = await this.prisma.task.create({
+      data: {
+        ...input,
+        description: input.description,
+      },
+    });
+
+    return toTaskRecord(record);
+  }
+
   async createTaskWithSourceAndSession(input: {
     task: CreateTaskRecordInput;
     source: CreateTaskInputSourceRecordInput;

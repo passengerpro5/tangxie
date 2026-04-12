@@ -24,6 +24,7 @@ apps/api/.local/
 # Editor
 .vscode/
 .idea/
+.codex/
 
 # Logs
 logs/

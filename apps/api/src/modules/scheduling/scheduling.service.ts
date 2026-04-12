@@ -1,4 +1,5 @@
 import {
+  overlaps,
   proposeSequentialSchedule,
   type BusyBlockInput,
   type ScheduleProposalResult,
@@ -80,6 +81,29 @@ export class SchedulingService {
 
   async listConfirmedBlocks() {
     return this.repository.listConfirmedBlocks();
+  }
+
+  async updateConfirmedBlock(input: { taskId: string; blockId: string; startAt: Date; endAt: Date }) {
+    if (input.endAt.getTime() <= input.startAt.getTime()) {
+      throw new Error("endAt must be after startAt");
+    }
+
+    const confirmedBlocks = await this.repository.listConfirmedBlocks();
+    const hasOverlap = confirmedBlocks.some(
+      (block) =>
+        block.id !== input.blockId &&
+        overlaps(input.startAt, input.endAt, block.startAt, block.endAt),
+    );
+    if (hasOverlap) {
+      throw new Error("Updated schedule block overlaps an existing confirmed block");
+    }
+
+    return this.repository.updateConfirmedBlock({
+      taskId: input.taskId,
+      blockId: input.blockId,
+      startAt: new Date(input.startAt.getTime()),
+      endAt: new Date(input.endAt.getTime()),
+    });
   }
 
   private async confirmedBlocksAsBusyBlocks(): Promise<BusyBlockInput[]> {

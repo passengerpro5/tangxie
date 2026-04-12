@@ -6,6 +6,28 @@
 
 This repository uses a pnpm workspace.
 
+## Codex UI/UX Workflow
+
+This repo now has a repo-level Codex UI/UX workflow for local development.
+
+- Repo rules: [AGENTS.md](AGENTS.md)
+- Workflow details: [docs/workflows/ui-ux-codex.md](docs/workflows/ui-ux-codex.md)
+- Review checklist: [docs/workflows/ui-ux-review-checklist.md](docs/workflows/ui-ux-review-checklist.md)
+
+Installed UI/UX skills used by this workflow:
+
+- `ui-ux-workflow`
+- `frontend-design`
+- `ui-ux-pro-max`
+- `frontend-design-review`
+- `figma-create-design-system-rules`
+
+Example prompts:
+
+- `Use $ui-ux-workflow to redesign the admin providers page with a clearer information hierarchy.`
+- `Use $ui-ux-workflow to review the mini program home page for UI quality and accessibility.`
+- `Use $ui-ux-workflow to turn our Figma-to-code conventions into repo rules.`
+
 ### Root scripts
 
 - `pnpm install`
@@ -79,6 +101,12 @@ Recommended first-run arrange-chat setup:
    - a natural-language reply for the user
    - a structured snapshot containing task summary, task list, and proposed blocks
 4. Run `连通性测试` before switching to the mini program.
+
+Local in-memory bootstrap behavior:
+
+- When `DATABASE_URL` is not set, `apps/api` now auto-creates one local `arrange_chat` provider/model/prompt trio on startup so the mini program is not blocked by a completely empty config store.
+- The bootstrap uses `AI_DEFAULT_PROVIDER`, `AI_DEFAULT_BASE_URL`, `AI_DEFAULT_MODEL`, and `AI_DEFAULT_API_KEY`.
+- If `AI_DEFAULT_API_KEY` is empty, arrange-chat requests will fail fast with `No API key configured for provider: ...` until you either fill the env var or update the provider from the admin console.
 
 ### Mini Program Workflow
 
@@ -163,6 +191,7 @@ Notes:
 - The embedded database writes temporary state under `apps/api/.local/`.
 - In restricted environments, starting the local database or running DB-backed tests may require execution outside the sandbox.
 - `createAppHandler()` uses Prisma for `admin-ai` when `DATABASE_URL` is present, and falls back to in-memory storage otherwise.
+- In-memory mode now bootstraps a default `arrange_chat` provider/model/prompt set for local development, but live provider calls still require `AI_DEFAULT_API_KEY` or a manually configured API key.
 - `ArrangeConversation` and `ArrangeConversationMessage` have been added to the Prisma schema; if you switch from in-memory mode to DB-backed mode, run the Prisma push/generate workflow first.
 - The new admin React shell uses the same `/admin/ai/*` endpoints and can run against either the in-memory or Prisma-backed API path.
 

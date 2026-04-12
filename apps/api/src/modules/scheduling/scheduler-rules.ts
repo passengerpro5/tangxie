@@ -95,7 +95,7 @@ function compareTasks(a: SchedulingTaskInput, b: SchedulingTaskInput) {
   return a.createdAt.getTime() - b.createdAt.getTime();
 }
 
-function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
+export function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
   return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime();
 }
 

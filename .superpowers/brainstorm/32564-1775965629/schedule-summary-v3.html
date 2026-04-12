@@ -1,0 +1,347 @@
+<style>
+  .wrap {
+    display: grid;
+    gap: 20px;
+  }
+
+  .intro {
+    max-width: 920px;
+  }
+
+  .intro p {
+    margin: 0;
+    color: #94a3b8;
+    line-height: 1.7;
+  }
+
+  .split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+  .card {
+    border-radius: 26px;
+    background: linear-gradient(180deg, rgba(255,252,247,0.96), rgba(255,247,239,0.92));
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    padding: 18px;
+    box-shadow: 0 22px 54px rgba(137, 76, 37, 0.12);
+  }
+
+  .card h3 {
+    margin: 0 0 8px;
+    color: #2b2118;
+    font-size: 1.05rem;
+  }
+
+  .card p {
+    margin: 0 0 14px;
+    color: #6b5b4d;
+    line-height: 1.65;
+    font-size: 0.95rem;
+  }
+
+  .phone {
+    border-radius: 30px;
+    background: #fffaf5;
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    padding: 14px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.8);
+  }
+
+  .phone-shell {
+    display: grid;
+    gap: 12px;
+  }
+
+  .topbar {
+    height: 52px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #f7b267, #f68b6b);
+  }
+
+  .summary {
+    border-radius: 22px;
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(180, 108, 56, 0.1);
+    padding: 12px 14px;
+  }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: 1.2fr auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .headline {
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f59e0b, #fb7185);
+    width: 46%;
+  }
+
+  .metrics {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .metric {
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.1);
+    color: #8b5e34;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .caret {
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    color: #9a5b16;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .details {
+    margin-top: 12px;
+    display: grid;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(180, 108, 56, 0.08);
+  }
+
+  .detail-box {
+    border-radius: 18px;
+    background: rgba(255,249,243,0.94);
+    border: 1px solid rgba(180,108,56,0.08);
+    padding: 10px 12px;
+  }
+
+  .line {
+    height: 9px;
+    border-radius: 999px;
+    background: rgba(183, 127, 79, 0.14);
+  }
+
+  .line.accent {
+    background: linear-gradient(90deg, rgba(245,158,11,0.6), rgba(246,139,107,0.45));
+  }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.08);
+    color: #8b5e34;
+    font-size: 13px;
+  }
+
+  .tab.active {
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: #fff8f1;
+  }
+
+  .timeline {
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,249,243,0.92));
+    border: 1px solid rgba(180, 108, 56, 0.08);
+    padding: 12px;
+    min-height: 190px;
+  }
+
+  .date-rail {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .date-pill {
+    border-radius: 14px;
+    height: 38px;
+    background: rgba(245, 158, 11, 0.08);
+  }
+
+  .date-pill.active {
+    background: linear-gradient(135deg, rgba(247,178,103,0.4), rgba(246,139,107,0.34));
+  }
+
+  .timeline-layout {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 10px;
+    min-height: 140px;
+  }
+
+  .gutter {
+    display: grid;
+    gap: 10px;
+  }
+
+  .tick {
+    height: 16px;
+    border-radius: 999px;
+    background: rgba(150, 102, 62, 0.08);
+  }
+
+  .canvas {
+    position: relative;
+    border-radius: 18px;
+    min-height: 140px;
+    background:
+      repeating-linear-gradient(
+        180deg,
+        rgba(150, 102, 62, 0.06),
+        rgba(150, 102, 62, 0.06) 1px,
+        transparent 1px,
+        transparent 34px
+      );
+  }
+
+  .block {
+    position: absolute;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(247,178,103,0.92), rgba(246,139,107,0.9));
+    box-shadow: 0 10px 26px rgba(246, 139, 107, 0.18);
+  }
+
+  .a { top: 14px; left: 10px; right: 20px; height: 38px; }
+  .b { top: 72px; left: 22px; right: 72px; height: 46px; }
+
+  .note {
+    color: #806d5d;
+    line-height: 1.65;
+    margin: 0;
+  }
+
+  @media (max-width: 1100px) {
+    .split {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <div class="intro">
+    <h2>首页“今日节奏摘要”修正版</h2>
+    <p class="subtitle">按你的要求，默认状态只保留一行级别的轻量摘要，展示几个关键指标；点击后可以展开更多说明，但展开高度仍然控制在工作区域的三分之一以内，不抢主视图。</p>
+  </div>
+
+  <div class="split">
+    <div class="card">
+      <h3>默认折叠态</h3>
+      <p>这是首页默认应该看到的样子。摘要只占一条，任务主工作区立刻可见。</p>
+      <div class="phone">
+        <div class="phone-shell">
+          <div class="topbar"></div>
+          <div class="summary">
+            <div class="summary-row">
+              <div class="headline"></div>
+              <div class="metrics">
+                <span class="metric">3 项待办</span>
+                <span class="metric">1 项高优</span>
+                <span class="metric">2h 焦点</span>
+                <span class="caret">⌄</span>
+              </div>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab active">日程</div>
+            <div class="tab">事项</div>
+            <div class="tab">排期</div>
+          </div>
+          <div class="timeline">
+            <div class="date-rail">
+              <div class="date-pill"></div>
+              <div class="date-pill"></div>
+              <div class="date-pill active"></div>
+              <div class="date-pill"></div>
+              <div class="date-pill"></div>
+            </div>
+            <div class="timeline-layout">
+              <div class="gutter">
+                <div class="tick"></div>
+                <div class="tick"></div>
+                <div class="tick"></div>
+              </div>
+              <div class="canvas">
+                <div class="block a"></div>
+                <div class="block b"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="note">重点：摘要不变成首页主角，它只是一个轻提示条。</p>
+    </div>
+
+    <div class="card">
+      <h3>点击展开态</h3>
+      <p>展开后只补“今天为什么是这个节奏”这类二级信息，但高度仍然很克制，不超过上方工作区的 1/3。</p>
+      <div class="phone">
+        <div class="phone-shell">
+          <div class="topbar"></div>
+          <div class="summary">
+            <div class="summary-row">
+              <div class="headline"></div>
+              <div class="metrics">
+                <span class="metric">3 项待办</span>
+                <span class="metric">1 项高优</span>
+                <span class="metric">2h 焦点</span>
+                <span class="caret">⌃</span>
+              </div>
+            </div>
+            <div class="details">
+              <div class="detail-box">
+                <div class="line accent" style="width: 48%;"></div>
+                <div class="line" style="width: 72%; margin-top: 8px;"></div>
+              </div>
+              <div class="detail-box">
+                <div class="line accent" style="width: 36%;"></div>
+                <div class="line" style="width: 64%; margin-top: 8px;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab active">日程</div>
+            <div class="tab">事项</div>
+            <div class="tab">排期</div>
+          </div>
+          <div class="timeline">
+            <div class="date-rail">
+              <div class="date-pill"></div>
+              <div class="date-pill"></div>
+              <div class="date-pill active"></div>
+              <div class="date-pill"></div>
+              <div class="date-pill"></div>
+            </div>
+            <div class="timeline-layout">
+              <div class="gutter">
+                <div class="tick"></div>
+                <div class="tick"></div>
+                <div class="tick"></div>
+              </div>
+              <div class="canvas">
+                <div class="block a"></div>
+                <div class="block b"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="note">重点：展开是“补充说明”，不是再塞一块完整 dashboard。</p>
+    </div>
+  </div>
+</div>

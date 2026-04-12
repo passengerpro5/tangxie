@@ -1,0 +1,422 @@
+<style>
+  .page {
+    display: grid;
+    gap: 22px;
+  }
+
+  .hero,
+  .section {
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(255, 247, 239, 0.92));
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    box-shadow: 0 22px 54px rgba(137, 76, 37, 0.12);
+    padding: 22px;
+  }
+
+  .hero h2,
+  .section h3 {
+    margin: 0;
+    color: #2b2118;
+  }
+
+  .hero p,
+  .section p,
+  .caption,
+  .state-note {
+    color: #6b5b4d;
+    line-height: 1.7;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.14);
+    color: #b45309;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .chip {
+    display: inline-flex;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    color: #9a5b16;
+    font-size: 12px;
+  }
+
+  .states {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .card {
+    border-radius: 22px;
+    background: rgba(255,255,255,0.84);
+    border: 1px solid rgba(180, 108, 56, 0.1);
+    padding: 14px;
+    display: grid;
+    gap: 12px;
+  }
+
+  .mini-title {
+    font-size: 0.98rem;
+    color: #33261d;
+    font-weight: 700;
+  }
+
+  .phone {
+    border-radius: 28px;
+    background: #fffaf5;
+    border: 1px solid rgba(180, 108, 56, 0.12);
+    padding: 12px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.8);
+  }
+
+  .phone-shell {
+    display: grid;
+    gap: 10px;
+  }
+
+  .bar {
+    height: 40px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #f7b267, #f68b6b);
+  }
+
+  .summary {
+    border-radius: 18px;
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(180, 108, 56, 0.1);
+    padding: 12px;
+  }
+
+  .line {
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(183, 127, 79, 0.14);
+  }
+
+  .line.accent {
+    background: linear-gradient(90deg, #f59e0b, #fb7185);
+  }
+
+  .timeline {
+    border-radius: 20px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,249,243,0.92));
+    border: 1px solid rgba(180, 108, 56, 0.08);
+    padding: 10px;
+    min-height: 170px;
+  }
+
+  .canvas {
+    position: relative;
+    border-radius: 16px;
+    min-height: 146px;
+    background:
+      repeating-linear-gradient(
+        180deg,
+        rgba(180, 108, 56, 0.06),
+        rgba(180, 108, 56, 0.06) 1px,
+        transparent 1px,
+        transparent 30px
+      );
+  }
+
+  .block {
+    position: absolute;
+    left: 10px;
+    right: 16px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(247,178,103,0.9), rgba(246,139,107,0.88));
+    box-shadow: 0 8px 24px rgba(246, 139, 107, 0.18);
+  }
+
+  .b1 { top: 14px; height: 42px; }
+  .b2 { top: 74px; height: 54px; right: 64px; }
+
+  .block.focused {
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.38), 0 10px 28px rgba(246, 139, 107, 0.22);
+  }
+
+  .handle {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 42px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.8);
+  }
+
+  .handle.top { top: 6px; }
+  .handle.bottom { bottom: 6px; }
+
+  .ghost {
+    position: absolute;
+    left: 34px;
+    right: 18px;
+    top: 122px;
+    height: 40px;
+    border-radius: 18px;
+    border: 2px dashed rgba(246, 139, 107, 0.44);
+    background: rgba(246, 139, 107, 0.08);
+  }
+
+  .toast {
+    border-radius: 18px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .toast.good {
+    background: rgba(253, 186, 116, 0.18);
+    color: #8a4b15;
+  }
+
+  .toast.warn {
+    background: rgba(251, 191, 36, 0.18);
+    color: #8c5609;
+  }
+
+  .toast.bad {
+    background: rgba(239, 68, 68, 0.12);
+    color: #9a2f2f;
+  }
+
+  .flow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .panel {
+    border-radius: 22px;
+    background: rgba(255,255,255,0.84);
+    border: 1px solid rgba(180, 108, 56, 0.1);
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+  }
+
+  .task-card,
+  .admin-card {
+    border-radius: 18px;
+    background: rgba(255,251,246,0.94);
+    border: 1px solid rgba(180,108,56,0.08);
+    padding: 12px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .action-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+  }
+
+  .btn.primary {
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: #fff8f1;
+  }
+
+  .btn.secondary {
+    background: rgba(245, 158, 11, 0.1);
+    color: #8b5e34;
+  }
+
+  .checklist {
+    display: grid;
+    gap: 10px;
+  }
+
+  .check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    color: #5f4f41;
+    line-height: 1.65;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f59e0b, #fb7185);
+    margin-top: 8px;
+    flex: none;
+  }
+
+  @media (max-width: 1100px) {
+    .states,
+    .flow {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="page">
+  <div class="hero">
+    <div class="eyebrow">Section 4</div>
+    <h2>关键交互和状态设计</h2>
+    <p>这里定义的是“同样的功能，该怎么被感知”。也就是：拖拽、编辑、空状态、成功和异常反馈都保留原能力，但表达方式要更温和、更明确、更少压迫感。</p>
+    <div class="meta">
+      <span class="chip">功能不变</span>
+      <span class="chip">反馈升级</span>
+      <span class="chip">状态更清楚</span>
+      <span class="chip">少一点工具噪声</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>日程页的三种关键状态</h3>
+    <div class="states">
+      <div class="card">
+        <div class="mini-title">正常浏览状态</div>
+        <div class="phone">
+          <div class="phone-shell">
+            <div class="bar"></div>
+            <div class="summary">
+              <div class="line accent" style="width: 68%;"></div>
+              <div class="line" style="width: 44%; margin-top: 10px;"></div>
+            </div>
+            <div class="timeline">
+              <div class="canvas">
+                <div class="block b1"></div>
+                <div class="block b2"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="state-note">默认状态强调“今日节奏”和“接下来做什么”，而不是先把时间刻度和操作噪声砸到用户脸上。</p>
+      </div>
+
+      <div class="card">
+        <div class="mini-title">拖拽 / 调整状态</div>
+        <div class="phone">
+          <div class="phone-shell">
+            <div class="bar"></div>
+            <div class="timeline">
+              <div class="canvas">
+                <div class="block b1 focused">
+                  <div class="handle top"></div>
+                  <div class="handle bottom"></div>
+                </div>
+                <div class="block b2"></div>
+                <div class="ghost"></div>
+              </div>
+            </div>
+            <div class="toast good">已选中任务块，向上或向下拖动即可调整时间。</div>
+          </div>
+        </div>
+        <p class="state-note">编辑态需要明显，但不能紧张。高亮选中块、给预测落点、配一条低打扰提示，就够了。</p>
+      </div>
+
+      <div class="card">
+        <div class="mini-title">冲突 / 空状态</div>
+        <div class="phone">
+          <div class="phone-shell">
+            <div class="bar"></div>
+            <div class="timeline">
+              <div class="canvas"></div>
+            </div>
+            <div class="toast warn">今天还没有排期。可以先从最紧急的一项开始安排。</div>
+            <div class="toast bad">这段时间与已有任务重叠，请换一个空档再试。</div>
+          </div>
+        </div>
+        <p class="state-note">空状态和异常都不该只告诉用户“没有”或“失败”，而是立刻给下一步动作。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>任务详情页的操作逻辑</h3>
+    <div class="flow">
+      <div class="panel">
+        <div class="mini-title">详情页的顶部优先级</div>
+        <div class="task-card">
+          <div class="line accent" style="width: 62%;"></div>
+          <div class="line" style="width: 34%;"></div>
+          <div class="meta" style="margin-top:4px;">
+            <span class="chip">高优先级</span>
+            <span class="chip">今天 18:00</span>
+            <span class="chip">预计 2 小时</span>
+          </div>
+        </div>
+        <div class="task-card">
+          <div class="line accent" style="width: 48%;"></div>
+          <div class="line" style="width: 76%;"></div>
+          <div class="line" style="width: 64%;"></div>
+        </div>
+        <p class="caption">第一屏先回答三个问题：这是什么任务、现在处于什么状态、我接下来能做什么。</p>
+      </div>
+
+      <div class="panel">
+        <div class="mini-title">固定操作带</div>
+        <div class="task-card">
+          <div class="action-row">
+            <span class="btn primary">标记完成</span>
+            <span class="btn secondary">重新安排</span>
+            <span class="btn secondary">编辑信息</span>
+            <span class="btn secondary">查看记录</span>
+          </div>
+        </div>
+        <div class="checklist">
+          <div class="check"><span class="dot"></span><span>操作按钮保持现有能力，但放到统一位置，不让用户在页面里找入口。</span></div>
+          <div class="check"><span class="dot"></span><span>AI 建议不做成散乱提示语，而是做成“可执行建议卡”。</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>后台的配置和排障反馈</h3>
+    <div class="flow">
+      <div class="panel">
+        <div class="mini-title">表单保存反馈</div>
+        <div class="admin-card">
+          <div class="line accent" style="width: 44%;"></div>
+          <div class="line" style="width: 72%; margin-top: 10px;"></div>
+          <div class="action-row" style="margin-top: 10px;">
+            <span class="btn primary">保存</span>
+            <span class="btn secondary">测试 Provider</span>
+          </div>
+        </div>
+        <div class="toast good">已保存服务商配置，建议继续做一次连通性测试。</div>
+        <p class="caption">后台反馈要像专业助手：先告诉你结果，再告诉你下一步。</p>
+      </div>
+
+      <div class="panel">
+        <div class="mini-title">日志 / 异常反馈</div>
+        <div class="admin-card">
+          <div class="line accent" style="width: 52%;"></div>
+          <div class="line" style="width: 60%; margin-top: 10px;"></div>
+        </div>
+        <div class="toast bad">最近一次调用失败，可能与模型绑定或 provider 可用性有关。</div>
+        <div class="toast warn">建议先检查默认模型，再回到日志查看该次请求详情。</div>
+        <p class="caption">异常不只报错码，要把排障顺序说出来，降低后台使用成本。</p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -93,7 +93,10 @@ export class SchedulingController {
       sendJson(res, 404, { message: "Not Found" });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      const statusCode = message.startsWith("Task not found") ? 404 : 400;
+      const statusCode =
+        message.startsWith("Task not found") || message.startsWith("Confirmed schedule block not found")
+          ? 404
+          : 400;
       sendJson(res, statusCode, { message });
     }
   }
