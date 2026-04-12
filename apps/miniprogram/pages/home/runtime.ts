@@ -276,6 +276,18 @@ function buildPendingThreadItems(
   ];
 }
 
+function resolveArrangeStageFromSnapshot(snapshot: ArrangeConversationSnapshot | null): ArrangeFlowStage {
+  if (snapshot?.proposedBlocks.some((block) => block.status === "confirmed")) {
+    return "confirmed";
+  }
+
+  if (snapshot?.readyToConfirm) {
+    return "ready_to_schedule";
+  }
+
+  return "idle";
+}
+
 function toSystemDateId(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -581,6 +593,7 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
     state.currentConversationId = created.conversation.id;
     state.arrangeMessages = created.messages;
     state.arrangeSnapshot = created.snapshot;
+    state.stage = resolveArrangeStageFromSnapshot(created.snapshot);
     return created.conversation.id;
   }
 
@@ -597,7 +610,7 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
     state.answerText = "";
     state.nextQuestion = null;
     state.confirmedBlocks = [];
-    state.stage = created.snapshot.readyToConfirm ? "ready_to_schedule" : "idle";
+    state.stage = resolveArrangeStageFromSnapshot(created.snapshot);
     state.attachmentPickerOpen = false;
     return created.conversation.id;
   }
@@ -767,7 +780,7 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
         state.arrangeMessages = detail.messages;
         state.arrangeSnapshot = detail.snapshot;
         state.arrangeTab = "arrange";
-        state.stage = detail.snapshot.readyToConfirm ? "ready_to_schedule" : "idle";
+        state.stage = resolveArrangeStageFromSnapshot(detail.snapshot);
         syncArrangeSheetFromConversation(history);
       });
     },
@@ -877,7 +890,7 @@ export function createHomePageRuntime(options: HomePageRuntimeOptions = {}): Hom
           state.currentConversationId = result.conversation.id;
           state.arrangeMessages = [...state.arrangeMessages, result.userMessage, result.assistantMessage];
           state.arrangeSnapshot = result.snapshot;
-          state.stage = result.snapshot.readyToConfirm ? "ready_to_schedule" : "idle";
+          state.stage = resolveArrangeStageFromSnapshot(result.snapshot);
           syncArrangeSheetFromConversation(refreshedHistory);
           return { stage: state.stage };
         });

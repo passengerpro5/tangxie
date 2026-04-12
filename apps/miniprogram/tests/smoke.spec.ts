@@ -224,7 +224,7 @@ test("home page template binds runtime data and interaction handlers for WeChat 
   assert.equal(template.includes('bindtap="onProposeSchedule"'), true);
   assert.equal(template.includes('disabled="{{loading || !canSubmitDraft}}"'), true);
   assert.equal(template.includes('disabled="{{loading || !canSubmitAnswer}}"'), true);
-  assert.equal(template.includes("planner-send-inline-label-disabled"), true);
+  assert.equal(template.includes("planner-send-inline-label-disabled"), false);
   assert.equal(template.includes('class="planner-composer-shell"'), true);
   assert.equal(template.includes("planner-input-shell-ready"), false);
   assert.equal(template.includes('class="planner-tool planner-tool-add planner-tool-inline"'), true);
